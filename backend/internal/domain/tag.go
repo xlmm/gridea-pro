@@ -35,3 +35,8 @@ type TagRepository interface {
 	Update(ctx context.Context, tag *Tag) error
 	Delete(ctx context.Context, id string) error
 }
+
+// GetID implements Identifiable interface
+func (t Tag) GetID() string {
+	return t.ID
+}

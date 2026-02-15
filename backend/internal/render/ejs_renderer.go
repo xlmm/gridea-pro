@@ -18,6 +18,11 @@ var ejsJS string
 var ejsProgram *goja.Program
 var ejsProgramOnce sync.Once
 
+// Constants for VM Pool
+const (
+	MaxPoolSize = 20
+)
+
 // EjsRenderer EJS 渲染器
 // 使用 Goja (Go 的 JavaScript 运行时) + ejs.js 直接执行 EJS
 type EjsRenderer struct {
@@ -27,8 +32,34 @@ type EjsRenderer struct {
 	cache     map[string]string // 缓存模板内容
 	cacheLock sync.RWMutex
 
-	// VM Pool
+	// VM Pool (Bounded)
+	// pool 存储可用的 VM。如果不为空，直接取用。如果不为空但 pool 空，则阻塞等待。
 	pool chan *goja.Runtime
+}
+
+// NewEjsRenderer 创建 EJS 渲染器
+func NewEjsRenderer(config RenderConfig) *EjsRenderer {
+	r := &EjsRenderer{
+		config: config,
+		cache:  make(map[string]string),
+		pool:   make(chan *goja.Runtime, MaxPoolSize),
+	}
+
+	// 预热 VM 池 (Pre-fill)
+	// 这样可以确保我们有一个固定大小的池，且不会动态无限制创建
+	// 虽然启动时会有短暂开销，但保证了运行时的稳定性
+	for i := 0; i < MaxPoolSize; i++ {
+		vm, err := r.createVM()
+		if err != nil {
+			// 如果初始化失败，记录错误但继续（容错）
+			// 实际运行时可能会因为 pool 不满而导致吞吐量略低，但不会崩溃
+			fmt.Fprintf(os.Stderr, "Warn: Failed to initialize VM %d: %v\n", i, err)
+			continue
+		}
+		r.pool <- vm
+	}
+
+	return r
 }
 
 // createVM 创建新的 VM 实例
@@ -76,15 +107,6 @@ func (r *EjsRenderer) createVM() (*goja.Runtime, error) {
 	return vm, nil
 }
 
-// NewEjsRenderer 创建 EJS 渲染器
-func NewEjsRenderer(config RenderConfig) *EjsRenderer {
-	return &EjsRenderer{
-		config: config,
-		cache:  make(map[string]string),
-		pool:   make(chan *goja.Runtime, 32), // Allow up to 32 concurrent VMs
-	}
-}
-
 // Render 实现 ThemeRenderer 接口
 func (r *EjsRenderer) Render(templateName string, data *template.TemplateData) (string, error) {
 	return r.renderViaGoja(templateName, data)
@@ -101,89 +123,65 @@ func (r *EjsRenderer) ClearCache() {
 	defer r.cacheLock.Unlock()
 	r.cache = make(map[string]string)
 
-	// Clear pool
-loop:
-	for {
-		select {
-		case <-r.pool:
-		default:
-			break loop
-		}
-	}
+	// 注意：我们不清除 VM Pool，因为 VM 的上下文环境（polyfills, ejs lib）是静态的
+	// 每次使用时我们都会重新注入 data，所以重用 VM 是安全的
 }
 
 // renderViaGoja 通过 Goja 直接执行 EJS
 func (r *EjsRenderer) renderViaGoja(templateName string, data *template.TemplateData) (string, error) {
-	// 获取模板内容
+	// 1. 获取模板内容
 	templateContent, err := r.getTemplateContent(templateName)
 	if err != nil {
 		return "", err
 	}
 
-	// 提前序列化数据 (Move out of critical section/init)
+	// 2. 数据清洗 (Go Side)
+	// 在序列化之前，确保数据结构符合前端预期，减少 JS 端处理负担
+	r.sanitizeData(data)
+
+	// 3. 序列化数据
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
 		return "", fmt.Errorf("序列化数据失败: %w", err)
 	}
 
-	// 获取或创建 VM
-	vm, err := r.getVM()
-	if err != nil {
-		return "", fmt.Errorf("创建 JS 运行时失败: %w", err)
-	}
-	defer r.returnVM(vm)
+	// 4. 获取 VM (Blocked until available)
+	vm := <-r.pool
+	defer func() {
+		// 任务完成后归还 VM
+		// 为了防止污染，我们可以选择 reset 某些全局变量，但 EJS 是函数式调用的，风险较小
+		// 最重要的是把 vm 放回池子
+		r.pool <- vm
+	}()
 
-	// 主题路径
+	// 5. 准备参数
 	themePath := filepath.Join(r.config.AppDir, "themes", r.config.ThemeName)
-
-	// 构造模板的绝对路径，用于 EJS 的 filename 选项
-	// 这样 EJS 才能正确解析相对路径 include (例如 ./includes/head)
+	// 构造模板的绝对路径，用于 EJS 的 filename 选项，以便 include 相对路径工作
 	templateAbsPath := filepath.Join(themePath, "templates", templateName)
-	// 如果没有后缀，加上 .ejs (这里做一个简单的假设，因为 getTemplateContent 已经处理了读取)
-	// 为了更严谨，最好是从 getTemplateContent 返回路径，但这里先简单拼接
 	if filepath.Ext(templateAbsPath) == "" {
 		templateAbsPath += ".ejs"
 	}
 
-	// 执行 EJS 渲染
+	// 6. 执行脚本
+	// 直接调用 ejs.render，不再在 JS 里写大段 logic
+	// 我们把 dataJSON 解析为 JS 对象传递进去
 	script := fmt.Sprintf(`
 		(function() {
-			var data = %s;
-			var template = %s;
-
-			// 数据清洗：将 null 数组转换为 []，防止 EJS 报错
-			// Go 的 nil slice 会被序列化为 null，而 EJS 模板通常直接调用 .forEach 或 .map
-			if (data.menus === null) data.menus = [];
-			if (data.posts === null) data.posts = [];
-			if (data.tags === null) data.tags = [];
-			if (data.post && data.post.tags === null) data.post.tags = [];
-			
-			// 清洗 posts 数组中每个 post 的 tags
-			if (data.posts && Array.isArray(data.posts)) {
-				data.posts.forEach(function(post) {
-					if (post && post.tags === null) {
-						post.tags = [];
-					}
-				});
-			}
-			
-			// 兼容性处理：某些主题期望 site.posts、site.tags、site.menus 存在
-			// 确保 site 对象存在并包含必要的属性
-			if (!data.site) data.site = {};
-			if (!data.site.posts) {
-				data.site.posts = data.posts || [];
-			}
-			if (!data.site.tags) {
-				data.site.tags = data.tags || [];
-			}
-			if (!data.site.menus) {
-				data.site.menus = data.menus || [];
-			}
-			
 			try {
+				var data = %s;
+				var template = %s;
+				
+				// 兼容性处理：某些主题期望 site.posts、site.tags 存在
+				// 虽然我们在 Go 里做了清洗，但对象引用结构最好在这里保证
+				if (!data.site) data.site = {};
+				// 建立引用，避免拷贝
+				if (!data.site.posts) data.site.posts = data.posts;
+				if (!data.site.tags) data.site.tags = data.tags;
+				if (!data.site.menus) data.site.menus = data.menus;
+
 				return ejs.render(template, data, {
-					filename: %s, // 重要的是提供文件名，以便相对路径 include 工作
-					root: %s // 设置根目录
+					filename: %s, 
+					root: %s
 				});
 			} catch (e) {
 				return "EJS Error: " + e.message + "\n" + e.stack;
@@ -193,39 +191,50 @@ func (r *EjsRenderer) renderViaGoja(templateName string, data *template.Template
 
 	result, err := vm.RunString(script)
 	if err != nil {
-		return "", fmt.Errorf("EJS 执行出错: %w", err)
+		return "", fmt.Errorf("EJS 执行系统错误: %w", err)
 	}
 
 	resultStr := result.String()
 	if len(resultStr) > 10 && resultStr[:10] == "EJS Error:" {
-		// Log error for debugging
-		// fmt.Println(resultStr)
 		return "", fmt.Errorf("%s", resultStr)
 	}
 
 	return resultStr, nil
 }
 
-// getVM 获取或创建 Goja VM
-func (r *EjsRenderer) getVM() (*goja.Runtime, error) {
-	select {
-	case vm := <-r.pool:
-		return vm, nil
-	default:
-		return r.createVM()
+// sanitizeData 确保 TemplateData 中的 nil slice 被初始化为空 slice
+// 避免 json.Marshal 生成 null，导致前端 EJS 遍历报错
+func (r *EjsRenderer) sanitizeData(data *template.TemplateData) {
+	if data.Menus == nil {
+		data.Menus = []template.MenuView{}
+	}
+	if data.Posts == nil {
+		data.Posts = []template.PostView{}
+	} else {
+		for i := range data.Posts {
+			if data.Posts[i].Tags == nil {
+				data.Posts[i].Tags = []template.TagView{}
+			}
+			if data.Posts[i].Categories == nil {
+				data.Posts[i].Categories = []template.CategoryView{}
+			}
+		}
+	}
+	if data.Tags == nil {
+		data.Tags = []template.TagView{}
+	}
+	if data.Memos == nil {
+		data.Memos = []template.MemoView{}
+	}
+
+	// 处理单篇文章的 tags
+	if data.Post.Tags == nil {
+		data.Post.Tags = []template.TagView{}
+	}
+	if data.Post.Categories == nil {
+		data.Post.Categories = []template.CategoryView{}
 	}
 }
-
-// returnVM 归还 VM 到池中
-func (r *EjsRenderer) returnVM(vm *goja.Runtime) {
-	select {
-	case r.pool <- vm:
-	default:
-		// Pool is full, discard
-	}
-}
-
-// setupNodePolyfills has been replaced by node_polyfills.go SetupNodePolyfills
 
 // getTemplateContent 获取模板内容
 func (r *EjsRenderer) getTemplateContent(name string) (string, error) {

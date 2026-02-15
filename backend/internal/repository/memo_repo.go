@@ -13,10 +13,16 @@ import (
 type memoRepository struct {
 	mu     sync.RWMutex
 	appDir string
+	cache  []domain.Memo
+	loaded bool
 }
 
 func NewMemoRepository(appDir string) domain.MemoRepository {
-	return &memoRepository{appDir: appDir}
+	return &memoRepository{
+		appDir: appDir,
+		cache:  make([]domain.Memo, 0),
+		loaded: false,
+	}
 }
 
 // Internal DTO for JSON serialization compatibility
@@ -29,14 +35,17 @@ type MemoDTO struct {
 	UpdatedAt interface{} `json:"updatedAt"`
 }
 
-func (r *memoRepository) loadMemos() ([]domain.Memo, error) {
+// forceLoad loads memos from disk into cache. Caller must hold Lock.
+func (r *memoRepository) forceLoad() error {
 	dbPath := filepath.Join(r.appDir, "config", "memos.json")
 	var db struct {
 		Memos []MemoDTO `json:"memos"`
 	}
 
 	if err := LoadJSONFile(dbPath, &db); err != nil {
-		return []domain.Memo{}, nil
+		r.cache = []domain.Memo{}
+		r.loaded = true
+		return nil // Return nil on error (assuming empty or missing file)
 	}
 
 	memos := make([]domain.Memo, len(db.Memos))
@@ -50,14 +59,34 @@ func (r *memoRepository) loadMemos() ([]domain.Memo, error) {
 			UpdatedAt: parseTime(m.UpdatedAt),
 		}
 	}
-	return memos, nil
+	r.cache = memos
+	r.loaded = true
+	return nil
 }
 
-func (r *memoRepository) saveMemos(memos []domain.Memo) error {
+// loadIfNeeded ensures cache is populated.
+func (r *memoRepository) loadIfNeeded() error {
+	r.mu.RLock()
+	if r.loaded {
+		r.mu.RUnlock()
+		return nil
+	}
+	r.mu.RUnlock()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.loaded {
+		return nil
+	}
+	return r.forceLoad()
+}
+
+// saveCache writes the current cache to disk. Caller must hold Lock.
+func (r *memoRepository) saveCache() error {
 	dbPath := filepath.Join(r.appDir, "config", "memos.json")
 
-	dtos := make([]MemoDTO, len(memos))
-	for i, m := range memos {
+	dtos := make([]MemoDTO, len(r.cache))
+	for i, m := range r.cache {
 		dtos[i] = MemoDTO{
 			ID:        m.ID,
 			Content:   m.Content,
@@ -83,19 +112,6 @@ func parseTime(v interface{}) time.Time {
 		if parsed, err := utils.ParseTime(t); err == nil {
 			return parsed
 		}
-		// If strict parsing fails (e.g. some really weird format), fallback to Now
-		// But utils.ParseTime handles RFC3339 and TimeLayout.
-		// One edge case: TimeLayout (2006-01-02 15:04:05) is parsed as UTC by utils.ParseTime.
-		// If we want to support legacy local time data, we might need a specific check here?
-		// For now, let's trust utils.ParseTime.
-		// If legacy data was saved as "2024-02-14 10:00:00" (Local), utils.ParseTime parses as 10:00:00 UTC.
-		// If Local is UTC+8, actual time was 02:00:00 UTC.
-		// So it shifts 8 hours into the future (10:00:00 UTC vs 02:00:00 UTC).
-		// This explains why "Just now" shows for old data? No, "future" data shows as "Just now" in the frontend logic?
-		// "diff < 60*1000" logic in frontend handles future?
-		// diff = now - date. If date > now, diff is negative. diff < 60000 is true.
-		// So future dates show as "Just now".
-		// To fix legacy data, we explicitly try ParseInLocation for TimeLayout.
 		if t2, err := time.ParseInLocation(domain.TimeLayout, t, time.Local); err == nil {
 			return t2
 		}
@@ -112,80 +128,129 @@ func parseTime(v interface{}) time.Time {
 func (r *memoRepository) SaveAll(ctx context.Context, memos []domain.Memo) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.saveMemos(memos)
+
+	originalCache := r.cache
+	originalLoaded := r.loaded
+
+	r.cache = memos
+	r.loaded = true
+
+	if err := r.saveCache(); err != nil {
+		r.cache = originalCache // Revert
+		r.loaded = originalLoaded
+		return err
+	}
+	return nil
 }
 
 func (r *memoRepository) Create(ctx context.Context, memo *domain.Memo) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	memos, err := r.loadMemos()
-	if err != nil {
+	if err := r.loadIfNeeded(); err != nil {
 		return err
 	}
 
-	memos = append(memos, *memo)
-	return r.saveMemos(memos)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// 1. Prepare new data
+	newCache := make([]domain.Memo, len(r.cache)+1)
+	copy(newCache, r.cache)
+	newCache[len(r.cache)] = *memo
+
+	// 2. Save to disk
+	originalCache := r.cache
+	r.cache = newCache
+	if err := r.saveCache(); err != nil {
+		r.cache = originalCache // Revert
+		return err
+	}
+
+	// 3. Cache updated
+	return nil
 }
 
 func (r *memoRepository) Update(ctx context.Context, id string, memo *domain.Memo) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	memos, err := r.loadMemos()
-	if err != nil {
+	if err := r.loadIfNeeded(); err != nil {
 		return err
 	}
 
-	found := false
-	for i, m := range memos {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	idx := -1
+	for i, m := range r.cache {
 		if m.ID == id {
-			memos[i] = *memo
-			found = true
+			idx = i
 			break
 		}
 	}
 
-	if !found {
+	if idx == -1 {
 		return fmt.Errorf("memo not found")
 	}
 
-	return r.saveMemos(memos)
-}
+	// 1. Prepare new data
+	newCache := make([]domain.Memo, len(r.cache))
+	copy(newCache, r.cache)
+	newCache[idx] = *memo
 
-func (r *memoRepository) Delete(ctx context.Context, id string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	memos, err := r.loadMemos()
-	if err != nil {
+	// 2. Save to disk
+	originalCache := r.cache
+	r.cache = newCache
+	if err := r.saveCache(); err != nil {
+		r.cache = originalCache // Revert
 		return err
 	}
 
-	newMemos := make([]domain.Memo, 0, len(memos))
-	for _, m := range memos {
-		if m.ID != id {
-			newMemos = append(newMemos, m)
+	// 3. Cache updated
+	return nil
+}
+
+func (r *memoRepository) Delete(ctx context.Context, id string) error {
+	if err := r.loadIfNeeded(); err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	idx := -1
+	for i, m := range r.cache {
+		if m.ID == id {
+			idx = i
+			break
 		}
 	}
 
-	if len(newMemos) == len(memos) {
+	if idx == -1 {
 		return fmt.Errorf("memo not found")
 	}
 
-	return r.saveMemos(newMemos)
+	// 1. Prepare new data
+	newCache := make([]domain.Memo, 0, len(r.cache)-1)
+	newCache = append(newCache, r.cache[:idx]...)
+	newCache = append(newCache, r.cache[idx+1:]...)
+
+	// 2. Save to disk
+	originalCache := r.cache
+	r.cache = newCache
+	if err := r.saveCache(); err != nil {
+		r.cache = originalCache // Revert
+		return err
+	}
+
+	// 3. Cache updated
+	return nil
 }
 
 func (r *memoRepository) GetByID(ctx context.Context, id string) (*domain.Memo, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	memos, err := r.loadMemos()
-	if err != nil {
+	if err := r.loadIfNeeded(); err != nil {
 		return nil, err
 	}
 
-	for _, m := range memos {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, m := range r.cache {
 		if m.ID == id {
 			return &m, nil
 		}
@@ -194,7 +259,15 @@ func (r *memoRepository) GetByID(ctx context.Context, id string) (*domain.Memo, 
 }
 
 func (r *memoRepository) List(ctx context.Context) ([]domain.Memo, error) {
+	if err := r.loadIfNeeded(); err != nil {
+		return nil, err
+	}
+
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	return r.loadMemos()
+
+	// Return a copy to prevent external modification
+	result := make([]domain.Memo, len(r.cache))
+	copy(result, r.cache)
+	return result, nil
 }

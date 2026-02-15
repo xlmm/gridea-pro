@@ -43,3 +43,8 @@ type MenuRepository interface {
 	List(ctx context.Context) ([]Menu, error)
 	SaveAll(ctx context.Context, menus []Menu) error
 }
+
+// GetID implements Identifiable interface
+func (m Menu) GetID() string {
+	return m.ID
+}

@@ -18,37 +18,65 @@ func LoadJSONFile(path string, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 
-// SaveJSONFile 将数据保存为 JSON 文件
+// SaveJSONFile saves data to a JSON file atomically.
+// It writes to a temp file first, flushes to disk, and then renames to target.
 func SaveJSONFile(path string, v interface{}) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0644)
+	return WriteFileAtomic(path, data, 0644)
 }
 
-// SaveJSONFileIdempotent 将数据保存为 JSON 文件，但只有内容变化时才写入
+// SaveJSONFileIdempotent saves data to a JSON file atomically, but only if content changes.
 func SaveJSONFileIdempotent(path string, v interface{}) error {
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
-	dir := filepath.Dir(path)
+
+	// Read existing file to compare
+	if existingData, err := os.ReadFile(path); err == nil {
+		if string(existingData) == string(data) {
+			return nil // Content matches, skip write
+		}
+	}
+
+	return WriteFileAtomic(path, data, 0644)
+}
+
+// WriteFileAtomic writes data to a file atomically by writing to a temp file and renaming.
+func WriteFileAtomic(filename string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(filename)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
 
-	// Read existing file to compare
-	existingData, err := os.ReadFile(path)
-	if err == nil && string(existingData) == string(data) {
-		return nil // Content matches, skip write
+	// Create temp file in the same directory to ensure atomic rename works (same FS)
+	tmpFile, err := os.CreateTemp(dir, filepath.Base(filename)+".tmp.*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmpFile.Name()
+	defer os.Remove(tmpName) // Clean up temp file if rename fails
+
+	if _, err := tmpFile.Write(data); err != nil {
+		tmpFile.Close()
+		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	// Ensure data is written to disk
+	if err := tmpFile.Sync(); err != nil {
+		tmpFile.Close()
+		return err
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+
+	// Atomic rename
+	return os.Rename(tmpName, filename)
 }
 
 func CopyFile(src, dst string) error {

@@ -24,5 +24,4 @@ type ThemeRenderer interface {
 type RenderConfig struct {
 	AppDir    string // 应用根目录
 	ThemeName string // 主题名称
-	CacheDir  string // 缓存目录
 }

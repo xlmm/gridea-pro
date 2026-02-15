@@ -27,17 +27,17 @@ func (r *mediaRepository) SaveImages(ctx context.Context, files []domain.Uploade
 	_ = os.MkdirAll(postImageDir, 0755)
 
 	var results []string
-	for _, file := range files {
+	for i, file := range files {
 		ext := filepath.Ext(file.Name)
-		newName := fmt.Sprintf("%d%s", time.Now().Unix(), ext)
+		// Use UnixNano and index to ensure uniqueness even in same batch
+		newName := fmt.Sprintf("%d_%d%s", time.Now().UnixNano(), i, ext)
 		newPath := filepath.Join(postImageDir, newName)
 
 		if err := CopyFile(file.Path, newPath); err != nil {
 			continue
 		}
-		// Return relative path or absolute? Original code returned what?
-		// Original code: results = append(results, newPath) -> Absolute path.
-		results = append(results, newPath)
+		// Return relative path for frontend usage
+		results = append(results, "/post-images/"+newName)
 	}
 
 	return results, nil

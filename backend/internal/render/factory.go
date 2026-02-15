@@ -16,14 +16,10 @@ type RendererFactory struct {
 
 // NewRendererFactory 创建渲染器工厂
 func NewRendererFactory(appDir, themeName string) *RendererFactory {
-	cacheDir := filepath.Join(appDir, ".gridea-cache", "templates")
-	_ = os.MkdirAll(cacheDir, 0755)
-
 	return &RendererFactory{
 		config: RenderConfig{
 			AppDir:    appDir,
 			ThemeName: themeName,
-			CacheDir:  cacheDir,
 		},
 	}
 }

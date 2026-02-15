@@ -55,4 +55,7 @@ type PostRepository interface {
 
 	// Deprecated: Use List instead
 	GetAll(ctx context.Context) ([]Post, error)
+
+	// Reload forces a rescan of the post directory
+	Reload(ctx context.Context) error
 }

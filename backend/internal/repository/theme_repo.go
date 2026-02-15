@@ -9,15 +9,24 @@ import (
 )
 
 type themeRepository struct {
-	mu     sync.RWMutex
-	appDir string
+	mu           sync.RWMutex
+	appDir       string
+	configCache  *domain.ThemeConfig
+	configLoaded bool
 }
 
 func NewThemeRepository(appDir string) domain.ThemeRepository {
-	return &themeRepository{appDir: appDir}
+	return &themeRepository{
+		appDir:       appDir,
+		configCache:  nil,
+		configLoaded: false,
+	}
 }
 
 func (r *themeRepository) GetAll(ctx context.Context) ([]domain.Theme, error) {
+	// Functionally identical to previous implementation (no caching for theme list yet)
+	// Could implement caching later if directory scanning becomes a bottleneck.
+
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -34,10 +43,6 @@ func (r *themeRepository) GetAll(ctx context.Context) ([]domain.Theme, error) {
 			var theme domain.Theme
 			if err := LoadJSONFile(themePath, &theme); err == nil {
 				theme.Folder = entry.Name()
-
-				// Detect preview image
-				// Check for preview.png, preview.jpg, preview.jpeg, preview.webp
-				// Return relative path from theme root: assets/media/preview.xxx
 				assetsDir := filepath.Join(themesDir, entry.Name(), "assets", "media")
 				exts := []string{".png", ".jpg", ".jpeg", ".webp"}
 				for _, ext := range exts {
@@ -46,7 +51,6 @@ func (r *themeRepository) GetAll(ctx context.Context) ([]domain.Theme, error) {
 						break
 					}
 				}
-
 				themes = append(themes, theme)
 			}
 		}
@@ -54,16 +58,26 @@ func (r *themeRepository) GetAll(ctx context.Context) ([]domain.Theme, error) {
 	return themes, nil
 }
 
-func (r *themeRepository) GetConfig(ctx context.Context) (domain.ThemeConfig, error) {
+func (r *themeRepository) loadConfigIfNeeded() error {
 	r.mu.RLock()
-	defer r.mu.RUnlock()
+	if r.configLoaded {
+		r.mu.RUnlock()
+		return nil
+	}
+	r.mu.RUnlock()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.configLoaded {
+		return nil
+	}
 
 	configPath := filepath.Join(r.appDir, "config", "config.json")
 	var config domain.ThemeConfig
 
-	// 如果文件不存在，返回默认配置
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return domain.ThemeConfig{
+		r.configCache = &domain.ThemeConfig{
 			ThemeName:        "default",
 			PostPageSize:     10,
 			ArchivesPageSize: 50,
@@ -82,13 +96,32 @@ func (r *themeRepository) GetConfig(ctx context.Context) (domain.ThemeConfig, er
 			PostPath:         "post",
 			TagPath:          "tag",
 			LinkPath:         "link",
-		}, nil
+		}
+		r.configLoaded = true
+		return nil
 	}
 
 	if err := LoadJSONFile(configPath, &config); err != nil {
+		return err
+	}
+
+	r.configCache = &config
+	r.configLoaded = true
+	return nil
+}
+
+func (r *themeRepository) GetConfig(ctx context.Context) (domain.ThemeConfig, error) {
+	if err := r.loadConfigIfNeeded(); err != nil {
 		return domain.ThemeConfig{}, err
 	}
-	return config, nil
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if r.configCache == nil {
+		return domain.ThemeConfig{}, nil
+	}
+	return *r.configCache, nil
 }
 
 func (r *themeRepository) SaveConfig(ctx context.Context, config domain.ThemeConfig) error {
@@ -96,5 +129,11 @@ func (r *themeRepository) SaveConfig(ctx context.Context, config domain.ThemeCon
 	defer r.mu.Unlock()
 
 	configPath := filepath.Join(r.appDir, "config", "config.json")
-	return SaveJSONFile(configPath, config)
+	if err := SaveJSONFile(configPath, config); err != nil {
+		return err
+	}
+
+	r.configCache = &config
+	r.configLoaded = true
+	return nil
 }

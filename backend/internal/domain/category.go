@@ -41,3 +41,8 @@ type CategoryRepository interface {
 	List(ctx context.Context) ([]Category, error)
 	SaveAll(ctx context.Context, categories []Category) error
 }
+
+// GetID implements Identifiable interface
+func (c Category) GetID() string {
+	return c.Slug
+}

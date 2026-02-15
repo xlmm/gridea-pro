@@ -18,18 +18,22 @@ import (
 type postRepository struct {
 	mu     sync.RWMutex
 	appDir string
+	cache  []domain.Post
+	loaded bool
 }
 
 func NewPostRepository(appDir string) domain.PostRepository {
 	return &postRepository{
 		appDir: appDir,
+		cache:  make([]domain.Post, 0),
+		loaded: false,
 	}
 }
 
-// local struct to handle YAML frontmatter parsing, especially for Date string
+// local struct to handle YAML frontmatter parsing and marshalling
 type postYaml struct {
 	Title      string   `yaml:"title"`
-	Date       string   `yaml:"date"` // Parse as string first
+	Date       string   `yaml:"date"` // Used for marshalling/unmarshalling
 	Tags       []string `yaml:"tags"`
 	TagIDs     []string `yaml:"tag_ids"`
 	Categories []string `yaml:"categories"`
@@ -47,184 +51,24 @@ func (r *postRepository) Update(ctx context.Context, post *domain.Post) error {
 	return r.save(ctx, post, true)
 }
 
-func (r *postRepository) save(ctx context.Context, post *domain.Post, isUpdate bool) error {
-	// Respect context cancellation
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-
+func (r *postRepository) scanPosts() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	postsDir := filepath.Join(r.appDir, "posts")
-	postImageDir := filepath.Join(r.appDir, "post-images")
-	_ = os.MkdirAll(postsDir, 0755)
-	_ = os.MkdirAll(postImageDir, 0755)
-
-	// Basic Validation
-	if err := post.Validate(); err != nil {
-		return err
-	}
-
-	tagsStr := strings.Join(post.Tags, ",")
-	tagsStr = escapeYAMLString(tagsStr)
-
-	// formatted tags "tag1", "tag2"
-	var formattedTags []string
-	for _, t := range post.Tags {
-		formattedTags = append(formattedTags, fmt.Sprintf("'%s'", escapeYAMLString(t)))
-	}
-	tagsStr = strings.Join(formattedTags, ", ")
-
-	// formatted tagIDs
-	var formattedTagIDs []string
-	for _, id := range post.TagIDs {
-		formattedTagIDs = append(formattedTagIDs, fmt.Sprintf("'%s'", escapeYAMLString(id)))
-	}
-	tagIDsStr := strings.Join(formattedTagIDs, ", ")
-
-	categoriesStr := strings.Join(post.Categories, ",")
-	feature := post.FeatureImagePath
-
-	// Handle Image Copy (Logic preserved from original Save)
-	if post.FeatureImage.Name != "" && post.FeatureImage.Path != "" {
-		ext := filepath.Ext(post.FeatureImage.Name)
-		newPath := filepath.Join(postImageDir, post.FileName+ext)
-		if err := CopyFile(post.FeatureImage.Path, newPath); err == nil {
-			feature = "/post-images/" + post.FileName + ext
-			// Cleanup temp file if necessary
-			if post.FeatureImage.Path != newPath && strings.Contains(post.FeatureImage.Path, postImageDir) {
-				_ = os.Remove(post.FeatureImage.Path)
-			}
-		}
-	}
-	// If FeatureImagePath was already set (e.g. existing post), keep it if no new image uploaded
-	if feature == "" && post.Feature != "" {
-		feature = post.Feature
-	} else if feature == "" {
-		feature = ""
-	}
-
-	dateStr := post.Date.Format(domain.TimeLayout)
-
-	mdContent := fmt.Sprintf(`---
-title: '%s'
-date: %s
-tags: [%s]
-tag_ids: [%s]
-categories: [%s]
-published: %t
-hideInList: %t
-feature: %s
-isTop: %t
----
-%s`,
-		escapeYAMLString(post.Title),
-		dateStr,
-		tagsStr,
-		tagIDsStr,
-		categoriesStr,
-		post.Published,
-		post.HideInList,
-		feature,
-		post.IsTop,
-		post.Content,
-	)
-
-	postPath := filepath.Join(postsDir, post.FileName+".md")
-
-	if isUpdate {
-		// handle rename
-		if post.DeleteFileName != "" && post.DeleteFileName != post.FileName {
-			oldPath := filepath.Join(postsDir, post.DeleteFileName+".md")
-			_ = os.Remove(oldPath)
-		}
-	} else {
-		// check exist for Create?
-		if _, err := os.Stat(postPath); err == nil {
-			return fmt.Errorf("post file already exists: %s", post.FileName)
-		}
-	}
-
-	// Idempotent check
-	existingContent, err := os.ReadFile(postPath)
-	if err == nil && string(existingContent) == mdContent {
+	if r.loaded {
 		return nil
 	}
 
-	if err := os.WriteFile(postPath, []byte(mdContent), 0644); err != nil {
-		return fmt.Errorf("failed to write post file: %w", err)
-	}
-
-	return nil
-}
-
-func (r *postRepository) Delete(ctx context.Context, fileName string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	postsDir := filepath.Join(r.appDir, "posts")
-	postPath := filepath.Join(postsDir, fileName+".md")
-
-	content, err := os.ReadFile(postPath)
-	if err == nil {
-		post, _ := r.parsePost(string(content), fileName+".md")
-
-		// Delete feature image
-		if post.Feature != "" && !strings.HasPrefix(post.Feature, "http") {
-			featurePath := filepath.Join(r.appDir, strings.TrimPrefix(post.Feature, "/"))
-			_ = os.Remove(featurePath)
-		}
-
-		// Delete embedded images
-		re := regexp.MustCompile(`!\[.*?\]\((.+?)\)`)
-		matches := re.FindAllStringSubmatch(post.Content, -1)
-		for _, match := range matches {
-			if len(match) > 1 {
-				imgPath := match[1]
-				if !strings.HasPrefix(imgPath, "http") {
-					fullPath := filepath.Join(r.appDir, strings.TrimPrefix(imgPath, "/"))
-					_ = os.Remove(fullPath)
-				}
-			}
-		}
-	}
-
-	return os.Remove(postPath)
-}
-
-func (r *postRepository) GetByFileName(ctx context.Context, fileName string) (*domain.Post, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	postPath := filepath.Join(r.appDir, "posts", fileName+".md")
-	content, err := os.ReadFile(postPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read post file: %w", err)
-	}
-
-	post, err := r.parsePost(string(content), fileName+".md")
-	if err != nil {
-		return nil, err
-	}
-	return &post, nil
-}
-
-func (r *postRepository) List(ctx context.Context, page, size int) ([]domain.Post, int64, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	postsDir := filepath.Join(r.appDir, "posts")
-	// Ensure dir exists
 	if _, err := os.Stat(postsDir); os.IsNotExist(err) {
-		return []domain.Post{}, 0, nil
+		r.cache = []domain.Post{}
+		r.loaded = true
+		return nil
 	}
 
 	files, err := os.ReadDir(postsDir)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to read posts dir: %w", err)
+		return fmt.Errorf("failed to read posts dir: %w", err)
 	}
 
 	var allPosts []domain.Post
@@ -248,26 +92,238 @@ func (r *postRepository) List(ctx context.Context, page, size int) ([]domain.Pos
 		return allPosts[i].Date.After(allPosts[j].Date)
 	})
 
-	// JSON Cache Side-effect (preserved)
-	dbPath := filepath.Join(r.appDir, "config", "posts.json")
-	db := map[string]interface{}{"posts": allPosts}
-	_ = SaveJSONFileIdempotent(dbPath, db)
+	r.cache = allPosts
+	r.loaded = true
+	return nil
+}
 
-	// Pagination
-	total := int64(len(allPosts))
+func (r *postRepository) Reload(ctx context.Context) error {
+	r.mu.Lock()
+	r.loaded = false
+	r.cache = nil
+	r.mu.Unlock()
+	return r.scanPosts()
+}
+
+func (r *postRepository) save(ctx context.Context, post *domain.Post, isUpdate bool) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	// Ensure cache is loaded before modifying it (to avoid partial state if saving without listing first)
+	// Although we are locking, consistency suggests we should have loaded state.
+	// But simply appending to cache if not loaded might be risky if we later load/overwrite.
+	// So let's ensure loaded.
+	if err := r.scanPosts(); err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	postsDir := filepath.Join(r.appDir, "posts")
+	postImageDir := filepath.Join(r.appDir, "post-images")
+	_ = os.MkdirAll(postsDir, 0755)
+	_ = os.MkdirAll(postImageDir, 0755)
+
+	if err := post.Validate(); err != nil {
+		return err
+	}
+
+	feature := post.FeatureImagePath
+
+	// Handle Image Copy
+	if post.FeatureImage.Name != "" && post.FeatureImage.Path != "" {
+		ext := filepath.Ext(post.FeatureImage.Name)
+		newPath := filepath.Join(postImageDir, post.FileName+ext)
+		if err := CopyFile(post.FeatureImage.Path, newPath); err == nil {
+			feature = "/post-images/" + post.FileName + ext
+			if post.FeatureImage.Path != newPath && strings.Contains(post.FeatureImage.Path, postImageDir) {
+				_ = os.Remove(post.FeatureImage.Path)
+			}
+		}
+	}
+	if feature == "" && post.Feature != "" {
+		feature = post.Feature
+	}
+
+	post.Feature = feature
+
+	// Prepare YAML
+	meta := postYaml{
+		Title:      post.Title,
+		Date:       post.Date.Format(domain.TimeLayout),
+		Tags:       post.Tags,
+		TagIDs:     post.TagIDs,
+		Categories: post.Categories,
+		Published:  post.Published,
+		HideInList: post.HideInList,
+		Feature:    post.Feature,
+		IsTop:      post.IsTop,
+	}
+
+	yamlBytes, err := yaml.Marshal(&meta)
+	if err != nil {
+		return fmt.Errorf("failed to marshal post yaml: %w", err)
+	}
+
+	mdContent := fmt.Sprintf("---\n%s---\n\n%s", string(yamlBytes), post.Content)
+
+	postPath := filepath.Join(postsDir, post.FileName+".md")
+
+	if isUpdate {
+		if post.DeleteFileName != "" && post.DeleteFileName != post.FileName {
+			oldPath := filepath.Join(postsDir, post.DeleteFileName+".md")
+			_ = os.Remove(oldPath)
+			// Remove from cache logic below handles "old" file by filtering/looping
+		}
+	} else {
+		if _, err := os.Stat(postPath); err == nil {
+			return fmt.Errorf("post file already exists: %s", post.FileName)
+		}
+	}
+
+	// Idempotent check optimization could be here, but with cache update we probably want to proceed.
+	// Write file atomically to prevent data loss
+	if err := WriteFileAtomic(postPath, []byte(mdContent), 0644); err != nil {
+		return fmt.Errorf("failed to write post file: %w", err)
+	}
+
+	// Update Cache
+	// If update, finding existing and replacing. If deleteFileName changed, we might have issues if we don't know the original index well or if ID isn't unique.
+	// But `post.DeleteFileName` helps us find the old one if renamed.
+	// If not renamed, `post.FileName` is the key.
+
+	// Strategy: Filter out old (by filename or deleteFileName), then append new, then sort.
+	newCache := make([]domain.Post, 0, len(r.cache)+1)
+	targetFileName := post.FileName
+	if isUpdate && post.DeleteFileName != "" {
+		targetFileName = post.DeleteFileName
+	}
+
+	// Remove existing if any
+	for _, p := range r.cache {
+		// If isUpdate, strictly remove the one we are updating.
+		// If Create, check collision? (already checked file existence)
+		if isUpdate {
+			if p.FileName == targetFileName {
+				continue
+			}
+		}
+		// If we are creating, we assume it's new, but safeguard:
+		if !isUpdate && p.FileName == post.FileName {
+			continue // Should not happen if file check passed, but just in case
+		}
+		newCache = append(newCache, p)
+	}
+
+	newCache = append(newCache, *post)
+
+	// Sort
+	sort.Slice(newCache, func(i, j int) bool {
+		return newCache[i].Date.After(newCache[j].Date)
+	})
+
+	r.cache = newCache
+	r.saveCacheJSON() // Side effect
+
+	return nil
+}
+
+func (r *postRepository) Delete(ctx context.Context, fileName string) error {
+	if err := r.scanPosts(); err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	postsDir := filepath.Join(r.appDir, "posts")
+	postPath := filepath.Join(postsDir, fileName+".md")
+
+	// Read file logic to cleanup images (preserved)
+	content, err := os.ReadFile(postPath)
+	if err == nil {
+		post, _ := r.parsePost(string(content), fileName+".md")
+		if post.Feature != "" && !strings.HasPrefix(post.Feature, "http") {
+			featurePath := filepath.Join(r.appDir, strings.TrimPrefix(post.Feature, "/"))
+			_ = os.Remove(featurePath)
+		}
+		re := regexp.MustCompile(`!\[.*?\]\((.+?)\)`)
+		matches := re.FindAllStringSubmatch(post.Content, -1)
+		for _, match := range matches {
+			if len(match) > 1 {
+				imgPath := match[1]
+				if !strings.HasPrefix(imgPath, "http") {
+					fullPath := filepath.Join(r.appDir, strings.TrimPrefix(imgPath, "/"))
+					_ = os.Remove(fullPath)
+				}
+			}
+		}
+	}
+
+	if err := os.Remove(postPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// Update Cache
+	newCache := make([]domain.Post, 0, len(r.cache))
+	for _, p := range r.cache {
+		if p.FileName != fileName {
+			newCache = append(newCache, p)
+		}
+	}
+	r.cache = newCache
+	r.saveCacheJSON()
+
+	return nil
+}
+
+func (r *postRepository) GetByFileName(ctx context.Context, fileName string) (*domain.Post, error) {
+	if err := r.scanPosts(); err != nil {
+		return nil, err
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, p := range r.cache {
+		if p.FileName == fileName {
+			return &p, nil
+		}
+	}
+
+	return nil, fmt.Errorf("post not found: %s", fileName)
+}
+
+func (r *postRepository) List(ctx context.Context, page, size int) ([]domain.Post, int64, error) {
+	if err := r.scanPosts(); err != nil {
+		return nil, 0, err
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	total := int64(len(r.cache))
 	start := (page - 1) * size
 	if start < 0 {
 		start = 0
 	}
-	if start >= len(allPosts) {
+	if start >= len(r.cache) {
 		return []domain.Post{}, total, nil
 	}
 	end := start + size
-	if end > len(allPosts) {
-		end = len(allPosts)
+	if end > len(r.cache) {
+		end = len(r.cache)
 	}
 
-	return allPosts[start:end], total, nil
+	// Return copy to prevent external mutation affecting cache
+	result := make([]domain.Post, end-start)
+	copy(result, r.cache[start:end])
+
+	return result, total, nil
 }
 
 func (r *postRepository) GetAll(ctx context.Context) ([]domain.Post, error) {
@@ -275,31 +331,57 @@ func (r *postRepository) GetAll(ctx context.Context) ([]domain.Post, error) {
 	return posts, err
 }
 
-// Helpers
+func (r *postRepository) saveCacheJSON() {
+	dbPath := filepath.Join(r.appDir, "config", "posts.json")
+	db := map[string]interface{}{"posts": r.cache}
+	_ = SaveJSONFileIdempotent(dbPath, db)
+}
 
 func (r *postRepository) parsePost(content string, filename string) (domain.Post, error) {
-	parts := strings.SplitN(content, "---", 3)
-	if len(parts) < 3 {
-		return domain.Post{}, fmt.Errorf("invalid post format")
+
+	// Use regex to extract frontmatter and content.
+	// (?s) allows . to match newlines
+	// ^\s* allows leading whitespace
+	// ---\s* matches start separator
+	// \n(.+?)\n matches YAML content non-greedily
+	// \s*---\s* matches end separator
+	// (.*)$ matches optional body
+	re := regexp.MustCompile(`(?s)^\s*---\s*\n(.+?)\n\s*---\s*(?:$|\n(.*))`)
+	matches := re.FindStringSubmatch(content)
+
+	var yamlPart, bodyPart string
+
+	if len(matches) >= 2 {
+		yamlPart = matches[1]
+		if len(matches) > 2 {
+			bodyPart = matches[2]
+		}
+	} else {
+		// Fallback for files that might not strictly match regex
+		parts := strings.SplitN(content, "---", 3)
+		if len(parts) < 3 {
+			// Handle case where split fails (e.g. valid file but regex mismatch?)
+			// Or completely invalid.
+			return domain.Post{}, fmt.Errorf("invalid post format: %s", filename)
+		}
+		yamlPart = parts[1]
+		bodyPart = parts[2]
 	}
 
 	var meta postYaml
-	if err := yaml.Unmarshal([]byte(parts[1]), &meta); err != nil {
-		return domain.Post{}, err
+	if err := yaml.Unmarshal([]byte(yamlPart), &meta); err != nil {
+		return domain.Post{}, fmt.Errorf("failed to parse yaml in %s: %w", filename, err)
 	}
 
-	postContent := strings.TrimSpace(parts[2])
+	postContent := strings.TrimSpace(bodyPart)
 	abstract := r.extractAbstract(postContent)
 
-	// Parse Date
 	parsedDate, err := time.Parse(domain.TimeLayout, meta.Date)
 	if err != nil {
-		// Fallback to now or try other formats?
-		// For now, default to Now if parse fails, or log error?
-		// Gridea default: Use creation time or Now.
 		parsedDate = time.Now()
 	}
 
+	// Update Post struct
 	post := domain.Post{
 		Title:      meta.Title,
 		Date:       parsedDate,
@@ -325,9 +407,4 @@ func (r *postRepository) extractAbstract(content string) string {
 		return strings.TrimSpace(content[:loc[0]])
 	}
 	return ""
-}
-
-func escapeYAMLString(s string) string {
-	s = strings.ReplaceAll(s, "'", "''")
-	return s
 }

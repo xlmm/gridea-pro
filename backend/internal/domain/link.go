@@ -44,3 +44,8 @@ type LinkRepository interface {
 	List(ctx context.Context) ([]Link, error)
 	SaveAll(ctx context.Context, links []Link) error
 }
+
+// GetID implements Identifiable interface
+func (l Link) GetID() string {
+	return l.ID
+}
