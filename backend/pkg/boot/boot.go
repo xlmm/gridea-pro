@@ -3,13 +3,17 @@ package boot
 import (
 	"context"
 	"embed"
+	"fmt"
 	"gridea-pro/backend/internal/app"
 	"gridea-pro/backend/internal/config"
 	"gridea-pro/backend/internal/facade"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -17,53 +21,130 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// NewLocalFileHandler creates middleware for serving local files
-func NewLocalFileMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Only handle /local-file requests
-		if r.URL.Path != "/local-file" {
-			// Pass to next handler for all other requests
-			next.ServeHTTP(w, r)
-			return
-		}
+var appCtx context.Context
 
-		// Get the file path from query parameter
-		filePath := r.URL.Query().Get("path")
-		if filePath == "" {
-			http.Error(w, "Missing path parameter", http.StatusBadRequest)
-			return
-		}
+// 菜单重建所需的包级引用
+var (
+	menuPrefsWindow  *app.PreferencesWindow
+	menuAboutHandler func(*menu.CallbackData)
+	menuQuitHandler  func(*menu.CallbackData)
+	menuAppDir       string
+)
 
-		// Security check: ensure the file exists and is accessible
-		fileInfo, err := os.Stat(filePath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				http.Error(w, "File not found", http.StatusNotFound)
-			} else {
-				http.Error(w, "Error accessing file", http.StatusInternalServerError)
+// NewFileServerMiddleware creates a secure middleware for serving local files.
+// It explicitly denies access to any file outside the rootPath to prevent directory traversal attacks.
+func NewFileServerMiddleware(rootPath string) func(http.Handler) http.Handler {
+	// Ensure rootPath is absolute for secure comparison
+	absRoot, err := filepath.Abs(rootPath)
+	if err != nil {
+		log.Fatalf("Failed to resolve absolute path for root directory: %v", err)
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Only handle /local-file requests
+			if r.URL.Path != "/local-file" {
+				next.ServeHTTP(w, r)
+				return
 			}
-			return
-		}
 
-		// Don't allow directory access
-		if fileInfo.IsDir() {
-			http.Error(w, "Cannot serve directories", http.StatusForbidden)
-			return
-		}
+			// Get the requested file path
+			requestedPath := r.URL.Query().Get("path")
+			if requestedPath == "" {
+				http.Error(w, "Missing path parameter", http.StatusBadRequest)
+				return
+			}
 
-		// Serve the file
-		http.ServeFile(w, r, filePath)
-	})
+			// Security Check: Prevent Path Traversal
+			// 1. Resolve absolute path of the requested file
+			absRequestedPath, err := filepath.Abs(requestedPath)
+			if err != nil {
+				http.Error(w, "Invalid file path", http.StatusBadRequest)
+				return
+			}
+
+			// 2. Check if the file is physically located within the allowed root directory
+			//    filepath.Rel return error or ".." prefix if path is outside base.
+			rel, err := filepath.Rel(absRoot, absRequestedPath)
+			if err != nil || strings.HasPrefix(rel, "..") {
+				log.Printf("Security Alert: Attempted unauthorized access to %s", requestedPath)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			// 3. Ensure the file exists and is not a directory
+			fileInfo, err := os.Stat(absRequestedPath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					http.Error(w, "File not found", http.StatusNotFound)
+				} else {
+					http.Error(w, "Error accessing file", http.StatusInternalServerError)
+				}
+				return
+			}
+
+			if fileInfo.IsDir() {
+				http.Error(w, "Cannot serve directories", http.StatusForbidden)
+				return
+			}
+
+			// Serve the validated file
+			http.ServeFile(w, r, absRequestedPath)
+		})
+	}
+}
+
+// openInOS 使用系统默认程序打开文件或文件夹（跨平台）
+func openInOS(path string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "linux":
+		cmd = exec.Command("xdg-open", path)
+	case "windows":
+		cmd = exec.Command("explorer", path)
+	default:
+		log.Printf("Unsupported OS for open: %s", runtime.GOOS)
+		return
+	}
+	if err := cmd.Start(); err != nil {
+		log.Printf("Failed to open path %s: %v", path, err)
+	}
+}
+
+// openInTerminal 在系统终端中打开指定目录（跨平台）
+func openInTerminal(path string) {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", "-a", "Terminal", path)
+	case "linux":
+		// 尝试常见的 Linux 终端模拟器
+		cmd = exec.Command("x-terminal-emulator", "--working-directory", path)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", "cmd", "/k", "cd", "/d", path)
+	default:
+		log.Printf("Unsupported OS for terminal: %s", runtime.GOOS)
+		return
+	}
+	if err := cmd.Start(); err != nil {
+		log.Printf("Failed to open terminal at %s: %v", path, err)
+	}
 }
 
 func Run(assets embed.FS) {
 	// 初始化 ConfigManager
 	configManager := config.NewConfigManager()
-	conf, _ := configManager.LoadConfig()
+	conf, err := configManager.LoadConfig()
+	if err != nil {
+		log.Printf("Warning: Failed to load config: %v", err)
+	}
 
-	// 初始化路径：优先使用配置中的路径，否则使用默认的 Documents/Gridea
+	// 初始化路径：优先使用配置中的路径，否则使用默认的 Documents/Gridea Pro
 	var appDir string
 	home, _ := os.UserHomeDir()
 
@@ -86,58 +167,68 @@ func Run(assets embed.FS) {
 	application := app.NewApp(appDir, services)
 	prefsWindow := app.NewPreferencesWindow()
 
-	// 创建应用菜单
-	appMenu := menu.NewMenu()
-
-	// 应用程序菜单 (macOS)
-	if AppMenu := appMenu.AddSubmenu("Gridea Pro"); AppMenu != nil {
-		AppMenu.AddText("首选项...", keys.CmdOrCtrl(","), func(_ *menu.CallbackData) {
-			prefsWindow.Show()
-		})
-		AppMenu.AddSeparator()
-		AppMenu.AddText("退出", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
+	// Capture context for safe shutdown
+	quitHandler := func(_ *menu.CallbackData) {
+		if appCtx != nil {
+			wailsRuntime.Quit(appCtx)
+		} else {
+			log.Println("Context missing, performing force exit")
 			os.Exit(0)
-		})
+		}
 	}
 
-	FileMenu := appMenu.AddSubmenu("File")
-	FileMenu.AddText("Open Site Folder...", keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
-		// Open folder logic
-		if paths, err := application.OpenFolderDialog(); err == nil && len(paths) > 0 {
-			log.Println("Selected folder:", paths[0])
+	aboutHandler := func(_ *menu.CallbackData) {
+		if appCtx != nil {
+			_, _ = wailsRuntime.MessageDialog(appCtx, wailsRuntime.MessageDialogOptions{
+				Type:    wailsRuntime.InfoDialog,
+				Title:   T("app.about"),
+				Message: "Gridea Pro\nVersion 1.0.0\nCopyright © 2026 Gridea Pro",
+			})
 		}
-	})
-	FileMenu.AddSeparator()
-	FileMenu.AddText("Quit", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
-		os.Exit(0)
-	})
+	}
 
-	appMenu.Append(menu.EditMenu())   // Edit menu (Copy, Paste, etc.)
-	appMenu.Append(menu.WindowMenu()) // Window menu
+	// 保存菜单构建参数，用于运行时重建
+	menuPrefsWindow = prefsWindow
+	menuAboutHandler = aboutHandler
+	menuQuitHandler = quitHandler
+	menuAppDir = appDir
+
+	// 构建应用菜单（传递 appDir 以支持文件/目录操作）
+	appMenu := buildMenu(prefsWindow, aboutHandler, quitHandler, appDir)
 
 	// Create application with options
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:  "Gridea Pro",
 		Width:  1280,
 		Height: 800,
 		AssetServer: &assetserver.Options{
 			Assets:     assets,
-			Middleware: NewLocalFileMiddleware,
+			Middleware: NewFileServerMiddleware(appDir), // Inject secure middleware
 		},
 		BackgroundColour: &options.RGBA{R: 255, G: 255, B: 255, A: 1},
 		StartHidden:      true,
 		OnStartup: func(ctx context.Context) {
+			appCtx = ctx // Capture context
 			prefsWindow.SetContext(ctx)
 			application.Startup(ctx)
-			services.Startup(ctx) // Initialize global context in facades
+			services.Startup(ctx)
+
+			// 监听前端语言切换事件，运行时重建菜单
+			wailsRuntime.EventsOn(ctx, "app:change-locale", func(optionalData ...interface{}) {
+				if len(optionalData) > 0 {
+					if locale, ok := optionalData[0].(string); ok {
+						SetLocale(locale)
+						newMenu := buildMenu(menuPrefsWindow, menuAboutHandler, menuQuitHandler, menuAppDir)
+						wailsRuntime.MenuSetApplicationMenu(ctx, newMenu)
+						wailsRuntime.MenuUpdateApplicationMenu(ctx)
+					}
+				}
+			})
 		},
 		OnShutdown: application.Shutdown,
 		Menu:       appMenu,
 		Bind: []interface{}{
-			// Explicitly bind App struct
 			application,
-
-			// Explicitly bind EACH Facade instance for Context Injection to work
 			services.Category,
 			services.Post,
 			services.Menu,
@@ -149,7 +240,6 @@ func Run(assets embed.FS) {
 			services.Setting,
 			services.Memo,
 			services.Comment,
-			// Add other facades here as needed
 		},
 		Mac: &mac.Options{
 			TitleBar:             mac.TitleBarHiddenInset(),
@@ -159,6 +249,297 @@ func Run(assets embed.FS) {
 	})
 
 	if err != nil {
-		println("Error:", err.Error())
+		fmt.Printf("Error during application run: %v\n", err)
 	}
+}
+
+// emitEvent 安全地向前端发送事件
+func emitEvent(event string, data ...interface{}) {
+	if appCtx != nil {
+		wailsRuntime.EventsEmit(appCtx, event, data...)
+	}
+}
+
+// buildMenu creates the full application menu.
+func buildMenu(
+	prefsWindow *app.PreferencesWindow,
+	aboutHandler func(*menu.CallbackData),
+	quitHandler func(*menu.CallbackData),
+	appDir string,
+) *menu.Menu {
+	appMenu := menu.NewMenu()
+
+	// ─────────────────────────────────────────────
+	// 1. 应用主菜单 (macOS only: "Gridea Pro")
+	// ─────────────────────────────────────────────
+	if runtime.GOOS == "darwin" {
+		appSubMenu := appMenu.AddSubmenu("Gridea Pro")
+
+		appSubMenu.AddText(T("app.about"), nil, aboutHandler)
+		appSubMenu.AddSeparator()
+
+		appSubMenu.AddText(T("app.checkUpdate"), nil, func(_ *menu.CallbackData) {
+			emitEvent("menu:check-update")
+		})
+		appSubMenu.AddSeparator()
+
+		appSubMenu.AddText(T("app.preferences"), keys.CmdOrCtrl(","), func(_ *menu.CallbackData) {
+			prefsWindow.Show()
+		})
+		appSubMenu.AddSeparator()
+
+		appSubMenu.AddText(T("app.hide"), keys.CmdOrCtrl("h"), func(_ *menu.CallbackData) {
+			if appCtx != nil {
+				wailsRuntime.Hide(appCtx)
+			}
+		})
+		appSubMenu.AddText(T("app.hideOthers"), nil, nil)
+		appSubMenu.AddText(T("app.showAll"), nil, func(_ *menu.CallbackData) {
+			if appCtx != nil {
+				wailsRuntime.Show(appCtx)
+			}
+		})
+		appSubMenu.AddSeparator()
+		appSubMenu.AddText(T("app.quit"), keys.CmdOrCtrl("q"), quitHandler)
+	}
+
+	// ─────────────────────────────────────────────
+	// 2. 文件 (File)
+	// ─────────────────────────────────────────────
+	fileMenu := appMenu.AddSubmenu(T("file"))
+
+	fileMenu.AddText(T("file.newPost"), keys.CmdOrCtrl("n"), func(_ *menu.CallbackData) {
+		emitEvent("menu:new-post")
+	})
+	fileMenu.AddText(T("file.newPage"), keys.Combo("n", keys.CmdOrCtrlKey, keys.ShiftKey), func(_ *menu.CallbackData) {
+		emitEvent("menu:new-page")
+	})
+	fileMenu.AddSeparator()
+
+	fileMenu.AddText(T("file.openSite"), keys.CmdOrCtrl("o"), func(_ *menu.CallbackData) {
+		openInOS(appDir)
+	})
+	fileMenu.AddText(T("file.openTerminal"), nil, func(_ *menu.CallbackData) {
+		openInTerminal(appDir)
+	})
+	fileMenu.AddSeparator()
+
+	fileMenu.AddText(T("file.save"), keys.CmdOrCtrl("s"), func(_ *menu.CallbackData) {
+		emitEvent("menu:save")
+	})
+	fileMenu.AddSeparator()
+
+	fileMenu.AddText(T("file.import"), nil, func(_ *menu.CallbackData) {
+		emitEvent("menu:import")
+	})
+	fileMenu.AddText(T("file.export"), nil, func(_ *menu.CallbackData) {
+		emitEvent("menu:export")
+	})
+
+	// Windows/Linux: 在文件菜单中也放置首选项和退出
+	if runtime.GOOS != "darwin" {
+		fileMenu.AddSeparator()
+		fileMenu.AddText(T("app.preferences"), keys.CmdOrCtrl(","), func(_ *menu.CallbackData) {
+			prefsWindow.Show()
+		})
+		fileMenu.AddSeparator()
+		fileMenu.AddText(T("app.quit"), keys.CmdOrCtrl("q"), quitHandler)
+	}
+
+	// ─────────────────────────────────────────────
+	// 3. 编辑 (Edit)
+	// ─────────────────────────────────────────────
+	// 手动构建编辑菜单（含标准操作 + 自定义功能）
+	editMenu := appMenu.AddSubmenu(T("edit"))
+
+	editMenu.AddText(T("edit.undo"), keys.CmdOrCtrl("z"), nil)
+	if runtime.GOOS == "darwin" {
+		editMenu.AddText(T("edit.redo"), keys.Combo("z", keys.CmdOrCtrlKey, keys.ShiftKey), nil)
+	} else {
+		editMenu.AddText(T("edit.redo"), keys.CmdOrCtrl("y"), nil)
+	}
+	editMenu.AddSeparator()
+
+	editMenu.AddText(T("edit.cut"), keys.CmdOrCtrl("x"), nil)
+	editMenu.AddText(T("edit.copy"), keys.CmdOrCtrl("c"), nil)
+	editMenu.AddText(T("edit.paste"), keys.CmdOrCtrl("v"), nil)
+	editMenu.AddText(T("edit.selectAll"), keys.CmdOrCtrl("a"), nil)
+	editMenu.AddSeparator()
+
+	editMenu.AddText(T("edit.find"), keys.CmdOrCtrl("f"), func(_ *menu.CallbackData) {
+		emitEvent("menu:find")
+	})
+	editMenu.AddText(T("edit.replace"), keys.Combo("f", keys.CmdOrCtrlKey, keys.OptionOrAltKey), func(_ *menu.CallbackData) {
+		emitEvent("menu:replace")
+	})
+	editMenu.AddSeparator()
+
+	editMenu.AddText(T("edit.copyHTML"), nil, func(_ *menu.CallbackData) {
+		emitEvent("menu:copy-html")
+	})
+
+	// ─────────────────────────────────────────────
+	// 4. 视图 (View)
+	// ─────────────────────────────────────────────
+	viewMenu := appMenu.AddSubmenu(T("view"))
+
+	viewMenu.AddText(T("view.toggleSidebar"), keys.CmdOrCtrl("b"), func(_ *menu.CallbackData) {
+		emitEvent("menu:toggle-sidebar")
+	})
+	viewMenu.AddText(T("view.togglePreview"), keys.CmdOrCtrl("p"), func(_ *menu.CallbackData) {
+		emitEvent("menu:toggle-preview")
+	})
+	viewMenu.AddSeparator()
+
+	viewMenu.AddText(T("view.actualSize"), keys.CmdOrCtrl("0"), func(_ *menu.CallbackData) {
+		emitEvent("menu:zoom-reset")
+	})
+	viewMenu.AddText(T("view.zoomIn"), keys.CmdOrCtrl("="), func(_ *menu.CallbackData) {
+		emitEvent("menu:zoom-in")
+	})
+	viewMenu.AddText(T("view.zoomOut"), keys.CmdOrCtrl("-"), func(_ *menu.CallbackData) {
+		emitEvent("menu:zoom-out")
+	})
+	viewMenu.AddSeparator()
+
+	if runtime.GOOS == "darwin" {
+		viewMenu.AddText(T("view.fullscreen"), keys.Combo("f", keys.CmdOrCtrlKey, keys.ControlKey), func(_ *menu.CallbackData) {
+			if appCtx != nil {
+				wailsRuntime.WindowFullscreen(appCtx)
+			}
+		})
+	} else {
+		viewMenu.AddText(T("view.fullscreen"), keys.Key("F11"), func(_ *menu.CallbackData) {
+			if appCtx != nil {
+				wailsRuntime.WindowFullscreen(appCtx)
+			}
+		})
+	}
+	viewMenu.AddSeparator()
+
+	viewMenu.AddText(T("view.devTools"), keys.Combo("i", keys.CmdOrCtrlKey, keys.OptionOrAltKey), func(_ *menu.CallbackData) {
+		emitEvent("menu:dev-tools")
+	})
+
+	// ─────────────────────────────────────────────
+	// 5. 主题 (Theme)
+	// ─────────────────────────────────────────────
+	themeMenu := appMenu.AddSubmenu(T("theme"))
+
+	themeMenu.AddText(T("theme.settings"), nil, func(_ *menu.CallbackData) {
+		emitEvent("menu:navigate", "/theme")
+	})
+	themeMenu.AddText(T("theme.refresh"), nil, func(_ *menu.CallbackData) {
+		emitEvent("menu:refresh-themes")
+	})
+	themeMenu.AddSeparator()
+
+	themeMenu.AddText(T("theme.openDir"), nil, func(_ *menu.CallbackData) {
+		themesDir := filepath.Join(appDir, "themes")
+		openInOS(themesDir)
+	})
+
+	// ─────────────────────────────────────────────
+	// 6. 站点 (Site) — 核心特色菜单
+	// ─────────────────────────────────────────────
+	siteMenu := appMenu.AddSubmenu(T("site"))
+
+	siteMenu.AddText(T("site.preview"), keys.CmdOrCtrl("r"), func(_ *menu.CallbackData) {
+		emitEvent("preview-site") // 复用已有事件
+	})
+	siteMenu.AddText(T("site.deploy"), keys.CmdOrCtrl("d"), func(_ *menu.CallbackData) {
+		emitEvent("publish-site") // 复用已有事件
+	})
+	siteMenu.AddSeparator()
+
+	siteMenu.AddText(T("site.clearCache"), nil, func(_ *menu.CallbackData) {
+		outputDir := filepath.Join(appDir, "output")
+		if err := os.RemoveAll(outputDir); err != nil {
+			log.Printf("Failed to clear cache: %v", err)
+			emitEvent("app:toast", map[string]interface{}{
+				"message":  T("toast.cacheClearFail") + err.Error(),
+				"type":     "error",
+				"duration": 3000,
+			})
+		} else {
+			// 重新创建 output 目录
+			_ = os.MkdirAll(outputDir, 0755)
+			emitEvent("app:toast", map[string]interface{}{
+				"message":  T("toast.cacheClearSuccess"),
+				"type":     "success",
+				"duration": 3000,
+			})
+		}
+	})
+
+	siteMenu.AddText(T("site.openOutput"), nil, func(_ *menu.CallbackData) {
+		outputDir := filepath.Join(appDir, "output")
+		_ = os.MkdirAll(outputDir, 0755) // 确保目录存在
+		openInOS(outputDir)
+	})
+
+	// ─────────────────────────────────────────────
+	// 7. 窗口 (Window) — 手动构建以支持多语言
+	// ─────────────────────────────────────────────
+	windowMenu := appMenu.AddSubmenu(T("window"))
+
+	windowMenu.AddText(T("window.minimize"), keys.CmdOrCtrl("m"), func(_ *menu.CallbackData) {
+		if appCtx != nil {
+			wailsRuntime.WindowMinimise(appCtx)
+		}
+	})
+	windowMenu.AddText(T("window.zoom"), nil, func(_ *menu.CallbackData) {
+		if appCtx != nil {
+			wailsRuntime.WindowMaximise(appCtx)
+		}
+	})
+	windowMenu.AddSeparator()
+	windowMenu.AddText(T("window.close"), keys.CmdOrCtrl("w"), func(_ *menu.CallbackData) {
+		if appCtx != nil {
+			wailsRuntime.Hide(appCtx)
+		}
+	})
+	windowMenu.AddSeparator()
+	windowMenu.AddText(T("window.front"), nil, func(_ *menu.CallbackData) {
+		if appCtx != nil {
+			wailsRuntime.WindowSetAlwaysOnTop(appCtx, true)
+			wailsRuntime.WindowSetAlwaysOnTop(appCtx, false)
+		}
+	})
+
+	// ─────────────────────────────────────────────
+	// 8. 帮助 (Help)
+	// ─────────────────────────────────────────────
+	helpMenu := appMenu.AddSubmenu(T("help"))
+
+	helpMenu.AddText(T("help.docs"), nil, func(_ *menu.CallbackData) {
+		if appCtx != nil {
+			wailsRuntime.BrowserOpenURL(appCtx, "https://gridea.dev")
+		}
+	})
+	helpMenu.AddText(T("help.feedback"), nil, func(_ *menu.CallbackData) {
+		if appCtx != nil {
+			wailsRuntime.BrowserOpenURL(appCtx, "https://github.com/getgridea/gridea/issues")
+		}
+	})
+	helpMenu.AddSeparator()
+
+	helpMenu.AddText(T("help.viewLogs"), nil, func(_ *menu.CallbackData) {
+		// 日志文件通常在用户配置目录
+		logDir := filepath.Join(appDir, "logs")
+		if _, err := os.Stat(logDir); os.IsNotExist(err) {
+			// Fallback: 打开站点目录
+			openInOS(appDir)
+		} else {
+			openInOS(logDir)
+		}
+	})
+
+	// Windows/Linux: 在帮助菜单中也放置"关于"
+	if runtime.GOOS != "darwin" {
+		helpMenu.AddSeparator()
+		helpMenu.AddText(T("app.about"), nil, aboutHandler)
+	}
+
+	return appMenu
 }

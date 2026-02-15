@@ -141,6 +141,8 @@ onMounted(() => {
 const saveLanguage = async (val: string) => {
   const newLocale = val as LocaleType
   await setI18nLanguage(newLocale)
+  // 通知后端重建原生菜单以匹配新语言
+  EventsEmit('app:change-locale', newLocale)
   toast.success(t('common.saved'))
 }
 

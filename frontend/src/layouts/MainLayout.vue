@@ -1,7 +1,8 @@
 <template>
   <div class="flex h-screen w-full overflow-hidden bg-background text-foreground">
     <!-- Sidebar -->
-    <aside class="w-[200px] flex-shrink-0 flex flex-col bg-sidebar border-r border-border z-10 select-none">
+    <aside v-if="sidebarVisible"
+      class="w-[200px] flex-shrink-0 flex flex-col bg-sidebar border-r border-border z-10 select-none">
       <!-- Draggable Area -->
       <div class="h-10 w-full flex-shrink-0 header-spacer"></div>
 
@@ -188,7 +189,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import pkg from '../../package.json'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const siteStore = useSiteStore()
@@ -205,6 +206,7 @@ const updateModalVisible = ref(false)
 const systemModalVisible = ref(false)
 const updateContent = ref('')
 const logModalVisible = ref(false)
+const sidebarVisible = ref(true)
 const log = ref<any>({})
 
 const currentRouter = computed(() => route.path)
@@ -308,6 +310,9 @@ const openPreferences = () => {
 }
 
 onMounted(() => {
+  // 启动时同步当前语言到后端，以便原生菜单使用正确的语言
+  EventsEmit('app:change-locale', locale.value)
+
   // Listen to events
   EventsOn('app-site-loaded', (result: any) => {
     console.log('app-site-loaded', result)
@@ -322,6 +327,68 @@ onMounted(() => {
   // 监听首选项菜单事件
   EventsOn('show-preferences-dialog', () => {
     systemModalVisible.value = true
+  })
+
+  // ─── 原生菜单事件监听 ───
+
+  // 文件菜单
+  EventsOn('menu:new-post', () => {
+    router.push('/articles?action=new')
+  })
+  EventsOn('menu:new-page', () => {
+    router.push('/articles?action=new-page')
+  })
+  EventsOn('menu:save', () => {
+    EventsEmit('editor:save')
+  })
+  EventsOn('menu:import', () => {
+    console.log('[Menu] Import - TODO: 待实现')
+  })
+  EventsOn('menu:export', () => {
+    console.log('[Menu] Export - TODO: 待实现')
+  })
+
+  // 编辑菜单
+  EventsOn('menu:find', () => {
+    EventsEmit('editor:find')
+  })
+  EventsOn('menu:replace', () => {
+    EventsEmit('editor:replace')
+  })
+  EventsOn('menu:copy-html', () => {
+    EventsEmit('editor:copy-html')
+  })
+
+  // 视图菜单
+  EventsOn('menu:toggle-sidebar', () => {
+    sidebarVisible.value = !sidebarVisible.value
+  })
+  EventsOn('menu:toggle-preview', () => {
+    EventsEmit('editor:toggle-preview')
+  })
+  EventsOn('menu:zoom-reset', () => {
+    document.body.style.zoom = '1'
+  })
+  EventsOn('menu:zoom-in', () => {
+    const current = parseFloat((document.body.style as any).zoom || '1')
+      ; (document.body.style as any).zoom = String(Math.min(current + 0.1, 2.0))
+  })
+  EventsOn('menu:zoom-out', () => {
+    const current = parseFloat((document.body.style as any).zoom || '1')
+      ; (document.body.style as any).zoom = String(Math.max(current - 0.1, 0.5))
+  })
+
+  // 主题菜单
+  EventsOn('menu:navigate', (path: string) => {
+    router.push(path)
+  })
+  EventsOn('menu:refresh-themes', () => {
+    EventsEmit('app-site-reload')
+  })
+
+  // 检查更新
+  EventsOn('menu:check-update', () => {
+    checkUpdate()
   })
 
   // Initial site load request
