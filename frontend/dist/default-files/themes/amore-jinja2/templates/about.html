@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ post.title if post else '关于' }} | {{ config.siteName }}{% endblock %}
+{% block title %}{% if post %}{{ post.title }}{% else %}关于{% endif %} | {{ config.siteName }}{% endblock %}
 
 {% block content %}
 {% include "partials/header.html" %}
@@ -7,12 +7,12 @@
 <article class="mod-post mod-post__type-post">
     <header>
         <h1 class="mod-post__title">
-            {{ post.title if post else '关于' }}
+            {% if post %}{{ post.title }}{% else %}关于{% endif %}
         </h1>
     </header>
 
     <div class="mod-post__entry wzulli">
-        {{ post.content if post else '' | safe }}
+        {% if post %}{{ post.content | safe }}{% endif %}
     </div>
 
 </article>

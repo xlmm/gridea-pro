@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}友链 | {{ config.siteName }}{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="page-header">
+    <h1 class="page-title">友链</h1>
+    <p class="page-subtitle">志同道合的朋友们</p>
+  </div>
+
+  <div class="friends-page">
+    {% if theme_config.friendsContent %}
+    <div class="friends-intro article-content">
+      {{ theme_config.friendsContent|safe }}
+    </div>
+    {% endif %}
+
+    {% if theme_config.friendsLinks %}
+    <div class="friends-grid">
+      {# friendsLinks is expected as rendered HTML from theme_config #}
+      {{ theme_config.friendsLinks|safe }}
+    </div>
+    {% else %}
+    <div class="friends-placeholder">
+      <div class="empty-state">
+        <p class="empty-state__text">友链位置虚位以待</p>
+        <p class="empty-state__hint meta-text">可在主题设置中添加友情链接</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

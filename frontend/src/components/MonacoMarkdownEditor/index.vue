@@ -13,6 +13,31 @@ import * as MonacoMarkdown from 'monaco-markdown'
 import theme from './theme'
 import { useThemeStore } from '@/stores/theme'
 
+// Import Monaco workers for ESM build
+import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
+import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
+import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker'
+import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker'
+import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
+
+self.MonacoEnvironment = {
+  getWorker(_: string, label: string) {
+    if (label === 'json') {
+      return new jsonWorker()
+    }
+    if (label === 'css' || label === 'scss' || label === 'less') {
+      return new cssWorker()
+    }
+    if (label === 'html' || label === 'handlebars' || label === 'razor') {
+      return new htmlWorker()
+    }
+    if (label === 'typescript' || label === 'javascript') {
+      return new tsWorker()
+    }
+    return new editorWorker()
+  }
+}
+
 const props = defineProps<{
   isPostPage?: boolean
 }>()
@@ -97,7 +122,7 @@ onMounted(() => {
       emit('change', value)
     }
   })
-  
+
   editor.onKeyDown((e: monaco.IKeyboardEvent) => {
     emit('keydown', e.browserEvent)
   })
@@ -144,6 +169,7 @@ defineExpose({
 
 :deep(.action-menu-item) {
   color: #718096 !important;
+
   &:hover {
     color: #744210 !important;
     background: #FFFFF0 !important;
@@ -157,6 +183,7 @@ defineExpose({
 :deep(.monaco-menu .monaco-action-bar.vertical .action-label.separator) {
   border-bottom-color: #E2E8F0 !important;
 }
+
 :deep(.input-holder) {
   &:before {
     content: '开始写作...';
@@ -170,6 +197,7 @@ defineExpose({
       background: #eee;
     }
   }
+
   .scroll-decoration {
     box-shadow: #efefef 0 2px 2px -2px inset;
   }

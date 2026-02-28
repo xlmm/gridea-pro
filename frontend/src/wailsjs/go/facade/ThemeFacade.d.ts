@@ -14,3 +14,5 @@ export function SaveThemeConfigFromFrontend(arg1:domain.ThemeConfig):Promise<voi
 export function SaveThemeCustomConfigFromFrontend(arg1:Record<string, any>):Promise<void>;
 
 export function SetRenderer(arg1:facade.RendererFacade):Promise<void>;
+
+export function UploadThemeCustomConfigImage(arg1:string):Promise<string>;

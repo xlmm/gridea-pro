@@ -36,6 +36,16 @@ import (
 // (?U) 开启非贪婪模式（Ungreedy），确保匹配最短可能的块
 var reTagBlock = regexp.MustCompile(`(?sU)({{.+}}|{%.+%}|{#.+#})`)
 
+var (
+	// Jinja2 loop 变量到 Pongo2 forloop 变量的自动映射
+	reLoopIndex0    = regexp.MustCompile(`\bloop\.index0\b`)
+	reLoopRevIndex0 = regexp.MustCompile(`\bloop\.revindex0\b`)
+	reLoopIndex     = regexp.MustCompile(`\bloop\.index\b`)
+	reLoopRevIndex  = regexp.MustCompile(`\bloop\.revindex\b`)
+	reLoopFirst     = regexp.MustCompile(`\bloop\.first\b`)
+	reLoopLast      = regexp.MustCompile(`\bloop\.last\b`)
+)
+
 // sanitizeTemplate 清理模板内容，将标签内的换行符替换为空格
 // 这使得标准 Jinja2 的多行标签写法能被 Pongo2 的严格 Lexer 接受
 func sanitizeTemplate(content []byte) []byte {
@@ -104,6 +114,17 @@ func (l *SanitizingLoader) Get(path string) (io.Reader, error) {
 
 	// 预处理：清理标签内的换行符
 	cleaned := sanitizeTemplate(content)
+
+	// 透明映射 Jinja2 loop 变量到 Pongo2 forloop 变量
+	// Pongo2 的 forloop 变量为 PascalCase，而 Jinja2 用户习惯写 loop.index
+	// 替换顺序必须严格（匹配长的在前面，如 index0），防止被短规则截断导致残留字符
+	// 另外：loop.length 不做映射，因 Pongo2 的 forloop 没有对应属性可以映射
+	cleaned = reLoopIndex0.ReplaceAll(cleaned, []byte("forloop.Counter0"))
+	cleaned = reLoopRevIndex0.ReplaceAll(cleaned, []byte("forloop.Revcounter0"))
+	cleaned = reLoopIndex.ReplaceAll(cleaned, []byte("forloop.Counter"))
+	cleaned = reLoopRevIndex.ReplaceAll(cleaned, []byte("forloop.Revcounter"))
+	cleaned = reLoopFirst.ReplaceAll(cleaned, []byte("forloop.First"))
+	cleaned = reLoopLast.ReplaceAll(cleaned, []byte("forloop.Last"))
 
 	return bytes.NewReader(cleaned), nil
 }

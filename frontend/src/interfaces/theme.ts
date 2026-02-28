@@ -11,6 +11,7 @@ export interface ITheme {
   postUrlFormat: string
   tagUrlFormat: string
   dateFormat: string
+  language: string
   feedFullText: boolean
   feedCount: number
   archivesPath: string

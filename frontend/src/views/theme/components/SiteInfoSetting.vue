@@ -12,7 +12,7 @@
       <!-- Site Description -->
       <div class="grid grid-cols-[180px_1fr] items-start gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground pt-2">{{ $t('settings.basic.siteDescription')
-          }}</label>
+        }}</label>
         <div class="max-w-sm">
           <Textarea v-model="form.siteDescription" rows="3" />
           <div class="text-xs text-muted-foreground mt-1">{{ $t('article.htmlSupport') }}</div>
@@ -22,7 +22,7 @@
       <!-- Site Author -->
       <div class="grid grid-cols-[180px_1fr] items-center gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground">{{ $t('settings.basic.siteAuthor')
-          }}</label>
+        }}</label>
         <div class="max-w-sm">
           <Input v-model="form.siteAuthor" />
         </div>
@@ -36,10 +36,34 @@
         </div>
       </div>
 
+      <!-- Site Language -->
+      <div class="grid grid-cols-[180px_1fr] items-start gap-4">
+        <label class="text-sm font-medium text-right text-muted-foreground pt-2">{{ $t('settings.basic.siteLanguage')
+          }}</label>
+        <div class="max-w-sm">
+          <Select v-model="form.siteLanguage">
+            <SelectTrigger>
+              <SelectValue :placeholder="$t('settings.basic.siteLanguage')" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="zh-cn">简体中文</SelectItem>
+              <SelectItem value="zh-tw">繁体中文</SelectItem>
+              <SelectItem value="en">English</SelectItem>
+              <SelectItem value="ja">日本語</SelectItem>
+              <SelectItem value="ko">한국어</SelectItem>
+              <SelectItem value="fr">Français</SelectItem>
+              <SelectItem value="de">Deutsch</SelectItem>
+              <SelectItem value="es">Español</SelectItem>
+            </SelectContent>
+          </Select>
+          <div class="text-xs text-muted-foreground mt-1 text-left">{{ $t('settings.basic.siteLanguageDesc') }}</div>
+        </div>
+      </div>
+
       <!-- Footer Info -->
       <div class="grid grid-cols-[180px_1fr] items-start gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground pt-2">{{ $t('settings.basic.footerInfo')
-          }}</label>
+        }}</label>
         <div class="max-w-sm">
           <Textarea v-model="form.footerInfo" rows="3" placeholder="Powered by Gridea Pro" />
           <div class="text-xs text-muted-foreground mt-1">{{ $t('htmlSupport') }}</div>
@@ -49,7 +73,7 @@
       <!-- Favicon -->
       <div class="grid grid-cols-[180px_1fr] items-start gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground pt-2">{{ $t('settings.basic.favicon')
-          }}</label>
+        }}</label>
         <div class="max-w-sm">
           <div
             class="w-24 h-24 border-1 border-dashed border-input rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors relative overflow-hidden bg-background"
@@ -66,7 +90,7 @@
       <!-- Avatar -->
       <div class="grid grid-cols-[180px_1fr] items-start gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground pt-2">{{ $t('settings.basic.avatar')
-          }}</label>
+        }}</label>
         <div class="max-w-sm">
           <div
             class="w-24 h-24 border-1 border-dashed border-input rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors relative overflow-hidden bg-background"
@@ -103,6 +127,7 @@ import FooterBox from '@/components/FooterBox/index.vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import ga from '@/helpers/analytics'
 import { EventsEmit, EventsOnce } from '@/wailsjs/runtime'
 import { SaveFavicon, SaveAvatar } from '@/wailsjs/go/facade/SettingFacade'
@@ -156,6 +181,7 @@ const form = reactive({
   siteName: '',
   siteAuthor: '',
   siteEmail: '',
+  siteLanguage: '',
   siteDescription: '',
   footerInfo: '',
 })
@@ -169,6 +195,7 @@ const saveTheme = async () => {
     siteName: form.siteName,
     siteAuthor: form.siteAuthor,
     siteEmail: form.siteEmail,
+    language: form.siteLanguage,
     siteDescription: form.siteDescription,
     footerInfo: form.footerInfo,
   })
@@ -189,6 +216,7 @@ onMounted(() => {
   form.siteName = config.siteName
   form.siteAuthor = config.siteAuthor
   form.siteEmail = config.siteEmail || ''
+  form.siteLanguage = config.language || 'zh-cn'
   form.siteDescription = config.siteDescription
   form.footerInfo = config.footerInfo
 

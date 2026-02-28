@@ -15,12 +15,12 @@
             {% set displayPosts = site.posts %}
             {% endif %}
 
-            {% set perPage = theme_config.postsPerPage | default(10) | int %}
+            {% set perPage = theme_config.postsPerPage | default:10 %}
 
             {% for post in displayPosts %}
             {% if post.title | lower != 'about' and post.title != '关于' %}
-            <li class="post-item {{ 'hide' if loop.index0 >= perPage else '' }}"><time class="mod-archive__time"
-                    datetime="{{ post.dateFormat }}">{{ post.dateFormat }}</time> <span>&nbsp;&nbsp;&nbsp;</span>
+            <li class="post-item"><time class="mod-archive__time" datetime="{{ post.dateFormat }}">{{ post.dateFormat
+                    }}</time> <span>&nbsp;&nbsp;&nbsp;</span>
                 <a href="{{ post.link }}">
                     {% if post.isTop %}[置顶] {% endif %}
                     {{ post.title }}
@@ -31,7 +31,7 @@
         </ul>
 
         <div class="posts-nav">
-            {% if typeof pagination !== 'undefined' %}
+            {% if pagination %}
             {% if pagination.next %}
             <div style="float:right;">
                 <a href="{{ pagination.next }}" class="page-numbers current flip">下一页</a>
@@ -47,10 +47,8 @@
                     display: none;
                 }
             </style>
-            <div id="pagination-config" data-per-page="{{ perPage }}" data-total-posts="{{ displayPosts.length }}"
-                style="display: none;"></div>
-            <div class="{{ displayPosts.length <= perPage ? 'hide' : '' }}" style="float:right;"
-                id="next-page-container">
+            <div id="pagination-config" data-per-page="{{ perPage }}" style="display: none;"></div>
+            <div style="float:right;" id="next-page-container">
                 <a href="javascript:void(0);" onclick="nextPage()" class="page-numbers current flip">下一页</a>
             </div>
             <a href="javascript:void(0);" onclick="prevPage()" class="page-numbers current flip" id="prev-page-btn"

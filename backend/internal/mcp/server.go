@@ -83,7 +83,7 @@ func initServices(appDir string) *Services {
 	postService := service.NewPostService(postRepo, tagRepo, tagService, categoryService, mediaRepo)
 	menuService := service.NewMenuService(menuRepo)
 	linkService := service.NewLinkService(linkRepo)
-	themeService := service.NewThemeService(themeRepo)
+	themeService := service.NewThemeService(themeRepo, appDir)
 	settingService := service.NewSettingService(appDir, settingRepo)
 	commentService := service.NewCommentService(appDir, commentRepo, postRepo, themeRepo)
 	memoService := service.NewMemoService(memoRepo)

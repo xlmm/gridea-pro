@@ -147,6 +147,8 @@
             "siteName": "网站名称",
             "siteAuthor": "网站作者",
             "siteEmail": "作者邮箱",
+            "siteLanguage": "站点语言",
+            "siteLanguageDesc": "系统生成 RSS, sitemap 时的目标语言标签",
             "siteDescription": "网站描述",
             "footerInfo": "底部信息",
             "showFeatureImage": "显示封面图",
@@ -160,7 +162,10 @@
             "dateFormat": "日期格式",
             "saveSuccess": "基础配置已保存",
             "faviconSaved": "网页图标已保存",
-            "avatarSaved": "头像配置已保存"
+            "avatarSaved": "头像配置已保存",
+            "archivesPathPrefix": "归档路径前缀",
+            "archivesPathPrefixDesc": "设置归档页面的 URL 前缀",
+            "archivesPathPrefixDefault": "archive"
         },
         "comment": {
             "title": "评论配置",

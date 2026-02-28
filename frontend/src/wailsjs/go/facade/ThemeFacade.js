@@ -25,3 +25,7 @@ export function SaveThemeCustomConfigFromFrontend(arg1) {
 export function SetRenderer(arg1) {
   return window['go']['facade']['ThemeFacade']['SetRenderer'](arg1);
 }
+
+export function UploadThemeCustomConfigImage(arg1) {
+  return window['go']['facade']['ThemeFacade']['UploadThemeCustomConfigImage'](arg1);
+}

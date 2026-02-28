@@ -104,7 +104,8 @@ func (s *PreviewService) StartPreviewServer(ctx context.Context) (string, error)
 	// 3. 配置服务器
 	mux := http.NewServeMux()
 	fs := http.FileServer(http.Dir(s.buildDir))
-	mux.Handle("/", fs)
+	// 禁用浏览器缓存，确保主题切换后立即加载最新的 CSS/JS
+	mux.Handle("/", noCacheMiddleware(fs))
 
 	s.server = &http.Server{
 		Handler:           mux,
@@ -184,5 +185,15 @@ func (s *PreviewService) sendToast(ctx context.Context, message, toastType strin
 		"message":  message,
 		"type":     toastType,
 		"duration": 3000,
+	})
+}
+
+// noCacheMiddleware 禁用浏览器缓存，确保主题切换/配置修改后立即加载最新资源
+func noCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		next.ServeHTTP(w, r)
 	})
 }

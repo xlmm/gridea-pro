@@ -70,7 +70,7 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 	postService := service.NewPostService(postRepo, tagRepo, tagService, categoryService, mediaRepo)
 	menuService := service.NewMenuService(menuRepo)
 	linkService := service.NewLinkService(linkRepo)
-	themeService := service.NewThemeService(themeRepo)
+	themeService := service.NewThemeService(themeRepo, appDir)
 	deployService := service.NewDeployService(settingRepo, appDir)
 	// RendererService
 	rendererService := service.NewRendererService(appDir, postRepo, themeRepo, settingRepo)

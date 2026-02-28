@@ -46,6 +46,14 @@ func (f *ThemeFacade) SaveThemeConfig(config domain.ThemeConfig) error {
 	return f.internal.SaveThemeConfig(ctx, config)
 }
 
+func (f *ThemeFacade) UploadThemeCustomConfigImage(sourcePath string) (string, error) {
+	ctx := WailsContext
+	if ctx == nil {
+		ctx = context.TODO()
+	}
+	return f.internal.SaveThemeImage(ctx, sourcePath)
+}
+
 // SaveThemeConfigFromFrontend saves theme config and triggers render
 func (f *ThemeFacade) SaveThemeConfigFromFrontend(config domain.ThemeConfig) error {
 	ctx := WailsContext

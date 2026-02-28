@@ -428,6 +428,7 @@ export namespace domain {
 	    postUrlFormat: string;
 	    tagUrlFormat: string;
 	    dateFormat: string;
+	    language: string;
 	    feedFullText: boolean;
 	    feedCount: number;
 	    archivesPath: string;
@@ -457,6 +458,7 @@ export namespace domain {
 	        this.postUrlFormat = source["postUrlFormat"];
 	        this.tagUrlFormat = source["tagUrlFormat"];
 	        this.dateFormat = source["dateFormat"];
+	        this.language = source["language"];
 	        this.feedFullText = source["feedFullText"];
 	        this.feedCount = source["feedCount"];
 	        this.archivesPath = source["archivesPath"];

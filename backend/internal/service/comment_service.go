@@ -58,7 +58,8 @@ func (s *CommentService) FetchComments(ctx context.Context, page, pageSize int) 
 		PageSize: pageSize,
 	}
 
-	if !settings.Enable {
+	// 未启用或未完整配置时，跳过网络请求
+	if !comment.IsConfigured(*settings) {
 		return emptyResult, nil
 	}
 
@@ -131,6 +132,11 @@ func (s *CommentService) ReplyComment(ctx context.Context, parentID string, cont
 		return err
 	}
 
+	// 未启用或未完整配置时，拒绝操作
+	if !comment.IsConfigured(*settings) {
+		return fmt.Errorf("评论功能未启用或配置不完整，无法回复")
+	}
+
 	provider, err := comment.NewProvider(*settings)
 	if err != nil {
 		return err
@@ -197,6 +203,11 @@ func (s *CommentService) DeleteComment(ctx context.Context, commentID string) er
 	settings, err := s.repo.GetSettings(ctx)
 	if err != nil {
 		return err
+	}
+
+	// 未启用或未完整配置时，拒绝操作
+	if !comment.IsConfigured(*settings) {
+		return fmt.Errorf("评论功能未启用或配置不完整，无法删除")
 	}
 
 	provider, err := comment.NewProvider(*settings)

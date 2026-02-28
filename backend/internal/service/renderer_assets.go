@@ -32,10 +32,19 @@ func (m *AssetManager) CopyThemeAssets(buildDir, themeName string) error {
 		return nil
 	}
 
+	// 检查主题是否发生了切换，如果切换则删除旧的 CSS 等静态资源缓存，避免 compileLess 误命中
+	themeCacheFile := filepath.Join(buildDir, ".current_theme")
+	if cachedTheme, err := os.ReadFile(themeCacheFile); err != nil || string(cachedTheme) != themeName {
+		_ = os.RemoveAll(filepath.Join(buildDir, DirStyles))
+	}
+	_ = os.WriteFile(themeCacheFile, []byte(themeName), 0644)
+
 	// 1. 检查并编译 LESS 文件
 	// 1. 检查并编译 LESS 文件
 	lessPath := filepath.Join(assetsPath, DirStyles, FileMainLess)
+	hasLess := false
 	if _, err := os.Stat(lessPath); err == nil {
+		hasLess = true
 		// Use compileLess which has optimization
 		if err := m.compileLess(lessPath, buildDir); err != nil {
 			_, _ = fmt.Fprintf(os.Stderr, "警告：LESS 编译失败: %v\n", err)
@@ -44,7 +53,38 @@ func (m *AssetManager) CopyThemeAssets(buildDir, themeName string) error {
 
 	// 2. 复制其他静态资源
 	destPath := filepath.Join(buildDir)
-	return copyDir(assetsPath, destPath)
+	if err := copyDir(assetsPath, destPath); err != nil {
+		return err
+	}
+
+	// 3. 对于纯 CSS 主题（无 LESS），也应用 style-override.js
+	if !hasLess {
+		overridePath := filepath.Join(themePath, FileStyleOverride)
+		cssPath := filepath.Join(buildDir, DirStyles, FileMainCSS)
+		if _, err := os.Stat(overridePath); err == nil {
+			if _, err := os.Stat(cssPath); err == nil {
+				fmt.Fprintln(os.Stderr, "检测到 style-override.js（纯 CSS 主题），应用自定义样式...")
+				customCSS, err := m.applyStyleOverride(overridePath)
+				if err != nil {
+					_, _ = fmt.Fprintf(os.Stderr, "警告：应用 style-override.js 失败: %v\n", err)
+				} else if customCSS != "" {
+					cssContent, err := os.ReadFile(cssPath)
+					if err != nil {
+						_, _ = fmt.Fprintf(os.Stderr, "警告：读取 CSS 文件失败: %v\n", err)
+					} else {
+						cssContent = append(cssContent, []byte("\n/* style-override */\n"+customCSS)...)
+						if err := os.WriteFile(cssPath, cssContent, 0644); err != nil {
+							_, _ = fmt.Fprintf(os.Stderr, "警告：写入 CSS 文件失败: %v\n", err)
+						} else {
+							fmt.Fprintln(os.Stderr, "✅ 纯 CSS 主题自定义样式应用成功")
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // compileLess 编译 LESS 文件为 CSS
@@ -58,12 +98,19 @@ func (m *AssetManager) compileLess(lessPath, buildDir string) error {
 	}
 
 	// Optimization: Check if recompilation is needed
-	// If main.css exists and is newer than main.less, skip compilation
-	lessInfo, err := os.Stat(lessPath)
-	if err == nil {
-		cssInfo, err := os.Stat(cssPath)
-		if err == nil && cssInfo.ModTime().After(lessInfo.ModTime()) {
-			return nil
+	// If main.css exists and is newer than both main.less and config.json
+	lessInfo, errLess := os.Stat(lessPath)
+	configInfo, errConf := os.Stat(filepath.Join(m.appDir, "config", "config.json"))
+	if errLess == nil {
+		if cssInfo, errCss := os.Stat(cssPath); errCss == nil {
+			isNewerThanLess := cssInfo.ModTime().After(lessInfo.ModTime())
+			isNewerThanConfig := true
+			if errConf == nil {
+				isNewerThanConfig = cssInfo.ModTime().After(configInfo.ModTime())
+			}
+			if isNewerThanLess && isNewerThanConfig {
+				return nil
+			}
 		}
 	}
 
@@ -75,8 +122,8 @@ func (m *AssetManager) compileLess(lessPath, buildDir string) error {
 	}
 
 	// 检查并应用 style-override.js
-	// 从 lessPath 推导主题路径
-	themePath := filepath.Dir(filepath.Dir(lessPath))
+	// 从 lessPath 推导主题路径 (lessPath 位于 themeDir/assets/styles/main.less)
+	themePath := filepath.Dir(filepath.Dir(filepath.Dir(lessPath)))
 	overridePath := filepath.Join(themePath, FileStyleOverride)
 	if _, err := os.Stat(overridePath); err == nil {
 		fmt.Fprintln(os.Stderr, "检测到 style-override.js，应用自定义样式...")
@@ -112,6 +159,13 @@ func (m *AssetManager) applyStyleOverride(jsPath string) (string, error) {
 
 	// 创建 JS 运行时
 	vm := goja.New()
+
+	// 注入 module 和 exports 环境，解决 module is not defined 报错
+	moduleObj := vm.NewObject()
+	exportsObj := vm.NewObject()
+	_ = moduleObj.Set("exports", exportsObj)
+	_ = vm.Set("module", moduleObj)
+	_ = vm.Set("exports", exportsObj)
 
 	// 执行 JS 代码
 	_, err = vm.RunString(string(jsCode))

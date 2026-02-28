@@ -209,6 +209,30 @@ func (s *RendererService) RenderAll(ctx context.Context) error {
 		_, _ = fmt.Fprintf(os.Stderr, "警告：渲染闪念页失败: %v\n", err)
 	}
 
+	// 12. 生成搜索数据 (api/search.json)
+	if err := s.renderSearchJSON(buildDir, templateData); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("生成搜索数据失败: %w", err))
+		_, _ = fmt.Fprintf(os.Stderr, "警告：生成搜索数据失败: %v\n", err)
+	}
+
+	// 13. 生成 RSS 订阅 (feed.xml)
+	if err := s.renderRSS(buildDir, templateData); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("生成 RSS 失败: %w", err))
+		_, _ = fmt.Fprintf(os.Stderr, "警告：生成 RSS 失败: %v\n", err)
+	}
+
+	// 14. 生成 Sitemap (sitemap.xml)
+	if err := s.renderSitemap(buildDir, templateData); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("生成 Sitemap 失败: %w", err))
+		_, _ = fmt.Fprintf(os.Stderr, "警告：生成 Sitemap 失败: %v\n", err)
+	}
+
+	// 15. 生成 Robots.txt
+	if err := s.renderRobotsTxt(buildDir, templateData); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("生成 robots.txt 失败: %w", err))
+		_, _ = fmt.Fprintf(os.Stderr, "警告：生成 robots.txt 失败: %v\n", err)
+	}
+
 	totalDuration := time.Since(startTime)
 	_, _ = fmt.Fprintf(os.Stderr, "渲染完成，共 %d 篇文章，耗时: %v\n", len(posts), totalDuration)
 	return errs

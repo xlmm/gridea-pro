@@ -20,9 +20,13 @@
         <div class="flex-1 min-w-0">
           <div class="space-y-6 m-0">
             <div v-for="(item, index1) in currentThemeConfig" :key="index1">
-              <div v-if="item.group === activeGroup" class="space-y-2">
-                <div class="flex justify-between items-center">
+              <div v-if="item && item.group === activeGroup" class="space-y-2">
+                <div class="flex justify-between items-center"
+                  :class="{ 'max-w-sm': item.type === 'switch' || item.type === 'toggle' }">
                   <label class="text-sm font-medium text-foreground">{{ item.label }}</label>
+                  <div v-if="item.type === 'switch' || item.type === 'toggle'">
+                    <Switch size="sm" v-model:checked="form[item.name]" />
+                  </div>
                 </div>
 
                 <div class="text-xs text-muted-foreground mb-2" v-if="item.note">{{ item.note }}</div>
@@ -103,33 +107,37 @@
                   </div>
                 </div>
 
-                <!-- Switch -->
-                <div v-if="item.type === 'switch'">
-                  <Switch v-model:checked="form[item.name]" />
-                </div>
-
                 <!-- Textarea -->
                 <div v-if="item.type === 'textarea'" class="max-w-sm">
                   <Textarea v-model="form[item.name]" rows="4" />
                 </div>
 
                 <!-- Picture Upload -->
-                <div v-if="item.type === 'picture-upload'" class="flex items-start gap-4">
-                  <div
-                    class="w-32 h-32 border-2 border-dashed border-input rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors relative overflow-hidden bg-background flex-shrink-0"
-                    @click="triggerFileInput(`fileInput-${index1}`)">
-                    <img v-if="form[item.name]" :src="getImageUrl(form[item.name])"
-                      class="w-full h-full object-cover" />
-                    <div v-else class="flex flex-col items-center text-muted-foreground">
-                      <i class="ri-upload-2-line text-2xl mb-1"></i>
+                <div v-if="['picture-upload', 'picture', 'image'].includes(item.type)" class="space-y-3">
+                  <Input v-model="form[item.name]" placeholder="输入在线图片链接或点击下方虚线框上传" class="max-w-sm" />
+                  <div class="flex items-start gap-4">
+                    <div
+                      class="w-24 h-24 border border-dashed border-input rounded-lg flex items-center justify-center cursor-pointer hover:border-primary transition-colors relative overflow-hidden bg-background shrink-0"
+                      @mouseenter="($event.currentTarget as HTMLElement).querySelector('.delete-btn')?.classList.remove('hidden')"
+                      @mouseleave="($event.currentTarget as HTMLElement).querySelector('.delete-btn')?.classList.add('hidden')"
+                      @click="handleImageUpload(item.name)">
+                      <img v-if="form[item.name]" :src="getImageUrl(form[item.name])"
+                        class="w-full h-full object-cover" />
+                      <div v-else class="flex flex-col items-center text-muted-foreground">
+                        <i class="ri-upload-2-line text-2xl mb-1"></i>
+                      </div>
+                      <!-- 悬浮删除/重置按钮 -->
+                      <div v-if="form[item.name]"
+                        class="delete-btn hidden absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center z-10 shadow-sm border border-white transition-colors cursor-pointer"
+                        @click.stop="resetFormItem(item.name)" title="移除图片">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                          class="w-3.5 h-3.5">
+                          <path
+                            d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                        </svg>
+                      </div>
                     </div>
-                    <input type="file" :ref="(el) => setFileInputRef(el, `fileInput-${index1}`)" class="hidden"
-                      accept="image/*" @change="(e) => handleImageUpload(e, item.name)" />
                   </div>
-                  <Button variant="ghost" size="icon" v-if="form[item.name]" @click="resetFormItem(item.name)"
-                    class="mt-2" title="Reset">
-                    <i class="ri-arrow-go-back-line"></i>
-                  </Button>
                 </div>
 
                 <!-- Markdown -->
@@ -156,7 +164,15 @@
                     </div>
 
                     <div v-for="(field, fieldIndex) in item.arrayItems" :key="fieldIndex" class="mb-4 last:mb-0">
-                      <Label class="block text-xs font-medium text-muted-foreground mb-1">{{ field.label }}</Label>
+                      <!-- Array Item Switch -->
+                      <div v-if="field.type === 'switch' || field.type === 'toggle'"
+                        class="flex items-center justify-between max-w-sm">
+                        <Label class="text-xs font-medium text-foreground">{{ field.label }}</Label>
+                        <Switch size="sm" v-model:checked="configItem[field.name]" />
+                      </div>
+
+                      <Label v-else class="block text-xs font-medium text-muted-foreground mb-1">{{ field.label
+                        }}</Label>
 
                       <!-- Array Item Input -->
                       <div class="max-w-sm" v-if="field.type === 'input' && !field.card">
@@ -179,27 +195,31 @@
                         </Select>
                       </div>
 
-                      <!-- Array Item Switch -->
-                      <div v-if="field.type === 'switch'">
-                        <Switch v-model:checked="configItem[field.name]" />
-                      </div>
-
                       <!-- Array Item Picture -->
-                      <div v-if="field.type === 'picture-upload'" class="flex items-center gap-2">
-                        <div
-                          class="w-16 h-16 border border-dashed border-input rounded flex items-center justify-center cursor-pointer overflow-hidden relative"
-                          @click="triggerFileInput(`fileInput-${index1}-${configItemIndex}-${fieldIndex}`)">
-                          <img v-if="configItem[field.name]" :src="getImageUrl(configItem[field.name])"
-                            class="w-full h-full object-cover" />
-                          <i v-else class="ri-add-line text-muted-foreground"></i>
-                          <input type="file"
-                            :ref="(el) => setFileInputRef(el, `fileInput-${index1}-${configItemIndex}-${fieldIndex}`)"
-                            class="hidden" accept="image/*"
-                            @change="(e) => handleImageUpload(e, item.name, field.name, Number(configItemIndex))" />
+                      <div v-if="['picture-upload', 'picture', 'image'].includes(field.type)" class="space-y-3">
+                        <Input v-model="configItem[field.name]" placeholder="输入在线图片链接或点击下方虚线框上传" class="max-w-sm" />
+                        <div class="flex items-center gap-2">
+                          <div
+                            class="relative w-full h-32 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer hover:border-gray-400 dark:hover:border-zinc-500 transition-colors"
+                            @mouseenter="($event.currentTarget as HTMLElement).querySelector('.delete-btn')?.classList.remove('hidden')"
+                            @mouseleave="($event.currentTarget as HTMLElement).querySelector('.delete-btn')?.classList.add('hidden')"
+                            @click="handleImageUpload(item.name, field.name, Number(configItemIndex))">
+                            <img v-if="configItem[field.name]" :src="getImageUrl(configItem[field.name])"
+                              class="w-full h-full object-cover" />
+                            <i v-else class="ri-add-line text-muted-foreground"></i>
+
+                            <!-- 悬浮删除/重置按钮 -->
+                            <div v-if="configItem[field.name]"
+                              class="delete-btn hidden absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center z-10 shadow-sm border border-white transition-colors cursor-pointer"
+                              @click.stop="resetFormItem(item.name, field.name, Number(configItemIndex))" title="移除图片">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                                class="w-3.5 h-3.5">
+                                <path
+                                  d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                              </svg>
+                            </div>
+                          </div>
                         </div>
-                        <button v-if="configItem[field.name]"
-                          @click="resetFormItem(item.name, field.name, Number(configItemIndex))"
-                          class="text-xs text-muted-foreground hover:text-destructive">Reset</button>
                       </div>
 
                     </div>
@@ -256,7 +276,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { EventsEmit, EventsOnce, ResolveFilePaths } from '@/wailsjs/runtime'
-import { SaveThemeCustomConfigFromFrontend } from '@/wailsjs/go/facade/ThemeFacade'
+import { SaveThemeCustomConfigFromFrontend, UploadThemeCustomConfigImage } from '@/wailsjs/go/facade/ThemeFacade'
 
 // Modal logic replacement
 const confirmReset = (callback: () => void) => {
@@ -270,18 +290,6 @@ const router = useRouter()
 const siteStore = useSiteStore()
 
 const form = reactive<Record<string, any>>({})
-const fileInputRefs = ref<Map<string, HTMLInputElement>>(new Map())
-
-const setFileInputRef = (el: any, key: string) => {
-  if (el) {
-    fileInputRefs.value.set(key, el as HTMLInputElement)
-  }
-}
-
-const triggerFileInput = (key: string) => {
-  const input = fileInputRefs.value.get(key)
-  input?.click()
-}
 
 const currentThemeConfig = computed<any[]>(() => {
   return (siteStore.site.currentThemeConfig || []) as unknown as any[]
@@ -304,12 +312,18 @@ watch(groups, (newVal) => {
 }, { immediate: true })
 
 const postsWithLink = computed(() => {
+  if (!siteStore.site.posts) return []
   const list = siteStore.site.posts.map((post: any) => {
     return {
       ...post,
-      link: urlJoin(siteStore.site.setting.domain, siteStore.site.themeConfig.postPath, post.fileName, '/'),
+      link: urlJoin(
+        siteStore.site.setting?.domain || '',
+        siteStore.site.themeConfig?.postPath || '',
+        post.fileName || '',
+        '/'
+      ),
     }
-  }).filter((post: any) => post.data.published)
+  }).filter((post: any) => post.data && post.data.published)
 
   return list
 })
@@ -321,6 +335,8 @@ const getImageUrl = (path: string) => {
   let fullPath = path
   if (path.startsWith('/media/')) {
     fullPath = `${siteStore.site.appDir}/themes/${siteStore.site.themeConfig.themeName}/assets${path}`
+  } else if (path.startsWith('/images/')) {
+    fullPath = `${siteStore.site.appDir}${path}`
   }
 
   return `/local-file?path=${encodeURIComponent(fullPath)}`
@@ -344,7 +360,7 @@ onMounted(() => {
 
 const getPostTitleByLink = (link: string) => {
   const foundPost = postsWithLink.value.find((post: any) => post.link === link)
-  return (foundPost && foundPost.data.title) || ''
+  return (foundPost && foundPost.data && foundPost.data.title) || ''
 }
 
 const saveThemeCustomConfig = async () => {
@@ -393,24 +409,20 @@ const handlePostSelected = (postUrl: string, name: string, arrayIndex?: number, 
   }
 }
 
-const handleImageUpload = async (event: Event, formItemName: string, arrayFieldItemName?: string, configItemIndex?: number) => {
-  const files = (event.target as HTMLInputElement).files
-  if (!files || files.length === 0) return
+const handleImageUpload = async (formItemName: string, arrayFieldItemName?: string, configItemIndex?: number) => {
+  try {
+    const filePath = await (window as any).go.app.App.OpenImageDialog()
+    if (!filePath) return
 
-  const file = files[0]
-  const isImage = file.type.indexOf('image') !== -1
-  if (!isImage) return
-
-  // Use ResolveFilePaths to get the actual file path
-  // Wails adds a 'path' property to File objects. Cast to any works for now or define interface.
-  const fileArray = Array.from(files)
-  await ResolveFilePaths(fileArray as any)
-  const filePath = (fileArray[0] as any).path
-
-  if (arrayFieldItemName && typeof configItemIndex === 'number') {
-    form[formItemName][configItemIndex][arrayFieldItemName] = filePath
-  } else {
-    form[formItemName] = filePath
+    const uploadedUrl = await UploadThemeCustomConfigImage(filePath)
+    if (arrayFieldItemName && typeof configItemIndex === 'number') {
+      form[formItemName][configItemIndex][arrayFieldItemName] = uploadedUrl
+    } else {
+      form[formItemName] = uploadedUrl
+    }
+  } catch (error) {
+    console.error('UploadThemeCustomConfigImage error', error)
+    toast.error(`Upload failed: ${error}`)
   }
 }
 

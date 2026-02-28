@@ -104,6 +104,25 @@ func (s *RendererService) buildTemplateData(ctx context.Context, posts []domain.
 	// 获取评论设置
 	commentSettingView := s.buildCommentSettingView(ctx)
 
+	// 获取全局 Setting (包含真实的 CNAME 或 Domain)
+	globalDomain := config.Domain
+	if globalDomain == "" && s.settingRepo != nil {
+		setting, err := s.settingRepo.GetSetting(ctx)
+		if err == nil {
+			if setting.CNAME != "" {
+				globalDomain = setting.CNAME
+				if !strings.HasPrefix(globalDomain, "http") {
+					globalDomain = "https://" + globalDomain
+				}
+			} else if setting.Domain != "" {
+				globalDomain = setting.Domain
+				if !strings.HasPrefix(globalDomain, "http") {
+					globalDomain = "https://" + globalDomain // HTTPS 兜底
+				}
+			}
+		}
+	}
+
 	data := &template.TemplateData{
 		ThemeConfig: template.ThemeConfigView{
 			ThemeName:        config.ThemeName,
@@ -111,12 +130,13 @@ func (s *RendererService) buildTemplateData(ctx context.Context, posts []domain.
 			SiteDescription:  config.SiteDescription,
 			FooterInfo:       config.FooterInfo,
 			ShowFeatureImage: config.ShowFeatureImage,
-			Domain:           config.Domain,
+			Domain:           globalDomain,
 			PostPageSize:     config.PostPageSize,
 			ArchivesPageSize: config.ArchivesPageSize,
 			PostUrlFormat:    config.PostUrlFormat,
 			TagUrlFormat:     config.TagUrlFormat,
 			DateFormat:       config.DateFormat,
+			Language:         config.Language,
 			FeedFullText:     config.FeedFullText,
 			FeedCount:        config.FeedCount,
 			ArchivesPath:     config.ArchivesPath,

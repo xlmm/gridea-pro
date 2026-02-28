@@ -54,6 +54,7 @@ type ThemeConfigView struct {
 	PostUrlFormat    string `json:"postUrlFormat"`
 	TagUrlFormat     string `json:"tagUrlFormat"`
 	DateFormat       string `json:"dateFormat"`
+	Language         string `json:"language"`
 	FeedFullText     bool   `json:"feedFullText"`
 	FeedCount        int    `json:"feedCount"`
 	ArchivesPath     string `json:"archivesPath"`

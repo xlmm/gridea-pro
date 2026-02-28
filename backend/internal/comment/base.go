@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -99,10 +100,20 @@ func (b *BaseProvider) DoJSON(ctx context.Context, method, url string, reqBody i
 	if resp.StatusCode >= 400 {
 		// 尝试读取 response body 以获取错误信息
 		respBody, _ := io.ReadAll(resp.Body)
+
+		// 截断过长的 body（如 Cloudflare 返回的 HTML 错误页），避免刷屏
+		bodyStr := string(respBody)
+		contentType := resp.Header.Get("Content-Type")
+		if strings.Contains(contentType, "text/html") {
+			bodyStr = "[HTML 响应已省略，可能是网络/防火墙拦截]"
+		} else if len(bodyStr) > 500 {
+			bodyStr = bodyStr[:500] + "...[已截断]"
+		}
+
 		b.logger.WarnContext(ctx, "API request returned error status",
 			"status", resp.StatusCode,
 			"url", url,
-			"body", string(respBody),
+			"body", bodyStr,
 		)
 
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
@@ -111,7 +122,7 @@ func (b *BaseProvider) DoJSON(ctx context.Context, method, url string, reqBody i
 		if resp.StatusCode == http.StatusNotFound {
 			return fmt.Errorf("%w: status %d", ErrNotFound, resp.StatusCode)
 		}
-		return fmt.Errorf("%w: status %d, body: %s", ErrProviderError, resp.StatusCode, string(respBody))
+		return fmt.Errorf("%w: status %d, body: %s", ErrProviderError, resp.StatusCode, bodyStr)
 	}
 
 	if respDest != nil {

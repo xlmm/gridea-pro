@@ -5,7 +5,7 @@
       <!-- Show Feature Image -->
       <div class="grid grid-cols-[180px_1fr] items-center gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground">{{ $t('settings.basic.showFeatureImage')
-        }}</label>
+          }}</label>
         <div>
           <Switch size="sm" v-model:checked="form.showFeatureImage" />
         </div>
@@ -14,7 +14,7 @@
       <!-- Articles Per Page -->
       <div class="grid grid-cols-[180px_1fr] items-center gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground">{{ $t('settings.basic.articlesPerPage')
-        }}</label>
+          }}</label>
         <div class="max-w-sm flex items-center gap-4">
           <Slider v-model="postPageSizeArray" :min="0" :max="50" :step="5" class="flex-1" />
           <span class="text-sm w-8 text-right">{{ form.postPageSize }}</span>
@@ -24,7 +24,7 @@
       <!-- Archives Per Page -->
       <div class="grid grid-cols-[180px_1fr] items-center gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground">{{ $t('settings.basic.archivesPerPage')
-        }}</label>
+          }}</label>
         <div class="max-w-sm flex items-center gap-4">
           <Slider v-model="archivesPageSizeArray" :min="0" :max="100" :step="10" class="flex-1" />
           <span class="text-sm w-8 text-right">{{ form.archivesPageSize }}</span>
@@ -101,16 +101,16 @@
 
       <div class="grid grid-cols-[180px_1fr] items-center gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground">{{ $t('settings.basic.archivesPathPrefix')
-        }}</label> <!-- // TODO: Check key -->
+          }}</label> <!-- // TODO: Check key -->
         <div class="max-w-sm">
           <Input v-model="form.archivesPath" :class="{ 'border-destructive': !form.archivesPath }" />
           <div v-if="!form.archivesPath" class="text-xs text-destructive mt-1">Required</div>
         </div>
       </div>
 
-      <div class="grid grid-cols-[180px_1fr] items-center gap-4">
-        <label class="text-sm font-medium text-right text-muted-foreground">{{ $t('settings.basic.dateFormat')
-        }}</label>
+      <div class="grid grid-cols-[180px_1fr] items-start gap-4">
+        <label class="text-sm font-medium text-right text-muted-foreground pt-2">{{ $t('settings.basic.dateFormat')
+          }}</label>
         <div class="max-w-sm">
           <Input v-model="form.dateFormat" />
           <div class="text-xs mt-1"><a href="#"
@@ -136,7 +136,7 @@
 
       <div class="grid grid-cols-[180px_1fr] items-center gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground">{{ $t('settings.basic.rssArticles')
-        }}</label>
+          }}</label>
         <div class="max-w-sm flex items-center gap-4">
           <Slider v-model="feedCountArray" :min="0" :max="50" :step="5" class="flex-1" />
           <span class="text-sm w-8 text-right">{{ form.feedCount }}</span>

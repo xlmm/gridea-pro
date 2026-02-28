@@ -198,11 +198,48 @@ func (r *Jinja2Renderer) buildContext(data *template.TemplateData) pongo2.Contex
 	// 数据清洗：确保 nil slice 初始化为空 slice
 	r.sanitizeData(data)
 
+	// 构建 config 对象：合并 ThemeConfig 的核心字段到 Site 中
+	// 使得模板中 config.siteName, config.domain 等可用
+	configValue := toContextValue(data.Site)
+	themeConfigValue := toContextValue(data.ThemeConfig)
+	// 将 customConfig（主题自定义配置）的值合并到 theme_config 中
+	// 使得模板中可以直接使用 theme_config.showSearch 等自定义配置项
+	if tcMap, ok := themeConfigValue.(map[string]interface{}); ok {
+		if data.Site.CustomConfig != nil {
+			for k, v := range data.Site.CustomConfig {
+				if _, exists := tcMap[k]; !exists {
+					tcMap[k] = v
+				}
+			}
+		}
+		themeConfigValue = tcMap
+	}
+	if configMap, ok := configValue.(map[string]interface{}); ok {
+		if tcMap, ok2 := themeConfigValue.(map[string]interface{}); ok2 {
+			for k, v := range tcMap {
+				if _, exists := configMap[k]; !exists {
+					configMap[k] = v
+				}
+			}
+		}
+		configValue = configMap
+	}
+
+	// 提取 links 数据（从 customConfig.friends）
+	var linksValue interface{}
+	if siteMap, ok := configValue.(map[string]interface{}); ok {
+		if cc, ok2 := siteMap["customConfig"].(map[string]interface{}); ok2 {
+			if friends, ok3 := cc["friends"]; ok3 {
+				linksValue = friends
+			}
+		}
+	}
+
 	ctx := pongo2.Context{
 		// 站点配置
-		"site":         toContextValue(data.Site),
-		"config":       toContextValue(data.Site), // alias，方便主题开发者
-		"theme_config": toContextValue(data.ThemeConfig),
+		"site":         configValue,
+		"config":       configValue, // alias，方便主题开发者
+		"theme_config": themeConfigValue,
 
 		// 内容数据
 		"post":  toContextValue(data.Post),
@@ -211,11 +248,19 @@ func (r *Jinja2Renderer) buildContext(data *template.TemplateData) pongo2.Contex
 		"menus": toContextValue(data.Menus),
 		"memos": toContextValue(data.Memos),
 
+		// 友链数据
+		"links": linksValue,
+
 		// 分页
 		"pagination": toContextValue(data.Pagination),
 
+		// 评论设置
+		"commentSetting": toContextValue(data.CommentSetting),
+
 		// 上下文信息
 		"current_tag": toContextValue(data.Tag),
+		"tag":         toContextValue(data.Tag), // alias
+		"currentTag":  toContextValue(data.Tag), // alias 兼容性
 
 		// 实用工具
 		"now": time.Now(),
@@ -252,7 +297,34 @@ func toContextValue(v interface{}) interface{} {
 	if err := json.Unmarshal(data, &result); err != nil {
 		return v
 	}
-	return result
+	// JSON 反序列化会把所有数字转成 float64
+	// pongo2 用 fmt.Sprintf("%f") 渲染 float64，导致整数显示为 "5.000000"
+	// 这里递归将 float64 整数还原为 int，保留真正的小数不变
+	return normalizeNumbers(result)
+}
+
+// normalizeNumbers 递归遗历 JSON 反序列化得到的数据结构
+// 将 float64 整数（如 5.0）转回 int，避免 pongo2 输出 "5.000000"
+func normalizeNumbers(v interface{}) interface{} {
+	switch val := v.(type) {
+	case float64:
+		// 判断是否为整数（如 5.0）
+		if val == float64(int64(val)) {
+			return int(val)
+		}
+		return val
+	case map[string]interface{}:
+		for k, item := range val {
+			val[k] = normalizeNumbers(item)
+		}
+		return val
+	case []interface{}:
+		for i, item := range val {
+			val[i] = normalizeNumbers(item)
+		}
+		return val
+	}
+	return v
 }
 
 // sanitizeData 确保 nil slice 初始化为空 slice，避免模板遍历时报错
@@ -332,6 +404,11 @@ func registerCustomFilters() {
 	// 注意: pongo2 不支持带参数名的 filter，使用字符串参数
 	// 用法: {% for year, posts in posts | group_by:"year" %}
 	pongo2.RegisterFilter("group_by", filterGroupBy)
+
+	// to_int: 将值强制转换为整数
+	// 字符串 "4" → 整数 4，解决字符串与整数比较时的类型不匹配问题
+	// 用法: {% if forloop.Counter0 < theme_config.popularPostCount|to_int %}
+	pongo2.RegisterFilter("to_int", filterToInt)
 }
 
 // ---- Filter 实现 ----
@@ -482,6 +559,17 @@ func filterGroupBy(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo
 	}
 
 	return pongo2.AsValue(result), nil
+}
+
+// filterToInt 将值强制转换为整数
+// 解决字符串 "4" 与整数做大小比较时类型不匹配的问题
+// 用法: {{ value|to_int }} 或 {% if counter < value|to_int %}
+func filterToInt(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	if in.IsInteger() {
+		return in, nil
+	}
+	// 字符串或浮点数 → 整数
+	return pongo2.AsValue(in.Integer()), nil
 }
 
 // ============================================================

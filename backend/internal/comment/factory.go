@@ -38,6 +38,52 @@ type DisqusConfig struct {
 	APIKey    string `json:"apiKey"`
 }
 
+// IsConfigured 判断评论功能是否已启用且填写了必要配置
+// 用于在服务层快速判断，避免在配置不完整时发起无效的网络请求
+func IsConfigured(settings domain.CommentSettings) bool {
+	if !settings.Enable {
+		return false
+	}
+	if settings.Platform == "" {
+		return false
+	}
+
+	getStr := func(p domain.CommentPlatform, key string) string {
+		if settings.PlatformConfigs == nil {
+			return ""
+		}
+		cfg := settings.PlatformConfigs[p]
+		if cfg == nil {
+			return ""
+		}
+		s, _ := cfg[key].(string)
+		return s
+	}
+
+	switch settings.Platform {
+	case domain.CommentPlatformValine:
+		return getStr(domain.CommentPlatformValine, "appId") != "" &&
+			getStr(domain.CommentPlatformValine, "appKey") != ""
+	case domain.CommentPlatformWaline:
+		return getStr(domain.CommentPlatformWaline, "serverURLs") != ""
+	case domain.CommentPlatformTwikoo:
+		return getStr(domain.CommentPlatformTwikoo, "envId") != ""
+	case domain.CommentPlatformGitalk:
+		return getStr(domain.CommentPlatformGitalk, "owner") != "" &&
+			getStr(domain.CommentPlatformGitalk, "repo") != ""
+	case domain.CommentPlatformGiscus:
+		return getStr(domain.CommentPlatformGiscus, "repo") != "" &&
+			getStr(domain.CommentPlatformGiscus, "repoId") != ""
+	case domain.CommentPlatformDisqus:
+		return getStr(domain.CommentPlatformDisqus, "shortname") != ""
+	case domain.CommentPlatformCusdis:
+		return getStr(domain.CommentPlatformCusdis, "host") != "" &&
+			getStr(domain.CommentPlatformCusdis, "appId") != ""
+	default:
+		return false
+	}
+}
+
 // NewProvider 创建评论提供者
 func NewProvider(settings domain.CommentSettings) (domain.CommentProvider, error) {
 	if !settings.Enable {

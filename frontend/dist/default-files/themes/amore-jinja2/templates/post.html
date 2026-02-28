@@ -24,7 +24,7 @@
 
 
             <div class="mod-post__entry wzulli">
-                {% if themeConfig.showFeatureImage && post.feature %} <img src="{{ post.feature }}" class="img"
+                {% if themeConfig.showFeatureImage and post.feature %} <img src="{{ post.feature }}" class="img"
                     alt="{{ post.title }}" />
                 {% endif %}
                 {{ post.content | safe }}
@@ -33,8 +33,10 @@
 </article>
 
 
-{% if 'about' not in post.link %}
+{% if post.link %}
+{% if not "about" in post.link %}
 {% include "partials/post-tags.html" %}
+{% endif %}
 {% endif %}
 
 <div class="mod-post__poster">
@@ -42,8 +44,10 @@
 
 </div>
 
-{% if 'about' not in post.link %}
+{% if post.link %}
+{% if not "about" in post.link %}
 {% include "partials/post-pagination.html" %}
+{% endif %}
 {% endif %}
 
 {% include "partials/comments.html" %}

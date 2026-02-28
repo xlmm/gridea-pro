@@ -98,12 +98,40 @@ func (s *ThemeConfigService) MergeConfig(
 	return result
 }
 
-// GetFinalConfig 获取最终配置（当前仅使用默认配置）
+// GetFinalConfig 获取最终配置：主题默认配置 + 用户自定义配置合并
+// 用户配置存储于 {appDir}/config/config.json 的 customConfig 字段
 func (s *ThemeConfigService) GetFinalConfig(themeName string) (map[string]interface{}, error) {
-	// Phase 1：仅返回默认配置
-	return s.GetDefaultConfig(themeName)
+	// Phase 1：读取主题默认配置
+	defaultConfig, err := s.GetDefaultConfig(themeName)
+	if err != nil {
+		return nil, err
+	}
 
-	// TODO: Phase 2：读取用户配置并合并
-	// userConfig := s.LoadUserConfig(themeName)
-	// return s.MergeConfig(defaultConfig, userConfig), nil
+	// Phase 2：读取用户已保存的配置并合并（用户配置优先）
+	userConfig := s.loadUserConfig()
+	if len(userConfig) > 0 {
+		return s.MergeConfig(defaultConfig, userConfig), nil
+	}
+
+	return defaultConfig, nil
+}
+
+// loadUserConfig 读取用户已保存的主题自定义配置
+// 路径：{appDir}/config/config.json 中的 customConfig 字段
+func (s *ThemeConfigService) loadUserConfig() map[string]interface{} {
+	configPath := filepath.Join(s.appDir, "config", "config.json")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil
+	}
+
+	if cc, ok := raw["customConfig"].(map[string]interface{}); ok {
+		return cc
+	}
+	return nil
 }

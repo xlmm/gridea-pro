@@ -1,0 +1,62 @@
+<footer class="site-footer">
+  <div class="footer-inner">
+
+    {# ── Footer navigation ── #}
+    {% if menus|length > 0 %}
+    <nav class="footer-nav" aria-label="页脚导航">
+      {% for menu in menus %}
+      <a class="footer-nav__link" href="{{ menu.link }}">{{ menu.name }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+
+    {# ── Social links ── #}
+    <div class="footer-social">
+      {% if theme_config.githubUrl %}
+      <a class="footer-social__link" href="{{ theme_config.githubUrl }}" target="_blank" rel="noopener noreferrer"
+        aria-label="GitHub">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+        </svg>
+      </a>
+      {% endif %}
+      {% if theme_config.twitterUrl %}
+      <a class="footer-social__link" href="{{ theme_config.twitterUrl }}" target="_blank" rel="noopener noreferrer"
+        aria-label="Twitter/X">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+      </a>
+      {% endif %}
+      {% if theme_config.weiboUrl %}
+      <a class="footer-social__link" href="{{ theme_config.weiboUrl }}" target="_blank" rel="noopener noreferrer"
+        aria-label="微博">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M10.098 20.323c-3.977.391-7.414-1.406-7.672-4.02-.259-2.609 2.759-5.047 6.74-5.441 3.979-.394 7.413 1.404 7.671 4.018.259 2.6-2.759 5.049-6.739 5.443zM20.196 9.4a4.8 4.8 0 00-1.386-.062c-.14.015-.18-.044-.196-.177a5.33 5.33 0 00-1.398-2.862c-1.065-1.158-2.473-1.614-3.974-1.352-.177.03-.224-.003-.27-.168a1.27 1.27 0 00-1.303-.945 1.291 1.291 0 00-1.108 1.129c-.042.34.074.638.305.892.072.078.044.118-.021.174A7.693 7.693 0 008.62 8.918c-.507.702-.836 1.486-.974 2.346-.026.156-.086.188-.228.136a3.513 3.513 0 00-1.675-.262c-1.03.095-1.86.594-2.392 1.488-.867 1.458-.349 3.467 1.183 4.351.666.383 1.39.528 2.147.474.14-.009.196.032.206.173.058.82.374 1.538.935 2.138 1.203 1.289 2.794 1.666 4.562 1.329 1.267-.241 2.36-.824 3.273-1.711 1.588-1.543 2.446-3.443 2.589-5.675.012-.197.07-.255.253-.295a3.2 3.2 0 001.792-1.098c.728-.94.696-2.213-.095-2.922z" />
+        </svg>
+      </a>
+      {% endif %}
+    </div>
+
+    {# ── Copyright ── #}
+    <div class="footer-copyright">
+      <p>&copy; {{ now|date:"2006" }} {{ config.siteName }}. All rights reserved.</p>
+    </div>
+
+    {# ── Custom footer info ── #}
+    {% if theme_config.footerInfo %}
+    <div class="footer-custom">
+      {{ theme_config.footerInfo|safe }}
+    </div>
+    {% endif %}
+
+    {# ── Powered by ── #}
+    <div class="footer-powered">
+      <span>Powered by <a href="https://gridea.dev" target="_blank" rel="noopener noreferrer">Gridea Pro</a></span>
+    </div>
+
+  </div>
+</footer>

@@ -142,6 +142,8 @@
             "siteName": "Site Name",
             "siteAuthor": "Site Author",
             "siteEmail": "Author Email",
+            "siteLanguage": "Site Language",
+            "siteLanguageDesc": "The target language tag for RSS and sitemaps",
             "siteDescription": "Site Description",
             "footerInfo": "Footer Information",
             "showFeatureImage": "Feature image",
