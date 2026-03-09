@@ -58,7 +58,7 @@
       {# View more button #}
       {% if pagination.hasNext %}
       <div class="view-more">
-        <a href="{{ pagination.nextURL }}" class="btn btn--secondary">查看更多文章 &rarr;</a>
+        <a href="/{{ theme_config.postPath|default:"post" }}/page/2/" class="btn btn--secondary">查看更多文章 &rarr;</a>
       </div>
       {% endif %}
     </div>

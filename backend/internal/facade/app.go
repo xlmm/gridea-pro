@@ -53,6 +53,7 @@ type AppServices struct {
 		Menu     domain.MenuRepository
 		Link     domain.LinkRepository
 		Memo     domain.MemoRepository
+		Setting  domain.SettingRepository
 	}
 	assets embed.FS // Keep reference for UpdateAppDir
 }
@@ -157,6 +158,7 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 			Menu     domain.MenuRepository
 			Link     domain.LinkRepository
 			Memo     domain.MemoRepository
+			Setting  domain.SettingRepository
 		}{
 			Category: categoryRepo,
 			Tag:      tagRepo,
@@ -164,6 +166,7 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 			Menu:     menuRepo,
 			Link:     linkRepo,
 			Memo:     memoRepo,
+			Setting:  settingRepo,
 		},
 		assets: assets,
 	}
@@ -178,6 +181,7 @@ func (s *AppServices) InvalidateAllCaches() {
 		s.Repositories.Menu,
 		s.Repositories.Link,
 		s.Repositories.Memo,
+		s.Repositories.Setting,
 	}
 	for _, r := range repos {
 		if inv, ok := r.(invalidatable); ok {

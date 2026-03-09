@@ -1,32 +1,117 @@
 package domain
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 )
 
 // Setting 系统设置
 // platform 标识当前启用的平台，platformConfigs 按平台独立存储所有配置
 type Setting struct {
 	Platform        string                       `json:"platform"`
-	PlatformConfigs map[string]json.RawMessage   `json:"platformConfigs,omitempty"`
+	PlatformConfigs map[string]map[string]any    `json:"platformConfigs,omitempty"`
 }
 
-// getConfig 解析当前平台的配置为 map
+// platformFieldOrder 定义各平台配置项的输出顺序，与前端表单顺序一致
+var platformFieldOrder = map[string][]string{
+	"github": {"domain", "repository", "branch", "username", "email", "tokenUsername", "token", "cname"},
+	"gitee":  {"domain", "repository", "branch", "username", "email", "tokenUsername", "token", "cname"},
+	"coding": {"domain", "repository", "branch", "username", "email", "tokenUsername", "token", "cname"},
+	"netlify": {"domain", "netlifySiteId", "netlifyAccessToken"},
+	"vercel": {"domain", "repository", "token", "cname"},
+	"sftp":   {"domain", "port", "server", "username", "password", "privateKey", "remotePath"},
+}
+
+// MarshalJSON 自定义 JSON 序列化，确保平台配置项按前端表单顺序输出
+func (s Setting) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteString(`{"platform":`)
+	p, _ := json.Marshal(s.Platform)
+	buf.Write(p)
+
+	if len(s.PlatformConfigs) > 0 {
+		buf.WriteString(`,"platformConfigs":{`)
+
+		// 平台名按字母序排列
+		platforms := make([]string, 0, len(s.PlatformConfigs))
+		for k := range s.PlatformConfigs {
+			platforms = append(platforms, k)
+		}
+		sort.Strings(platforms)
+
+		for i, platform := range platforms {
+			if i > 0 {
+				buf.WriteByte(',')
+			}
+			pk, _ := json.Marshal(platform)
+			buf.Write(pk)
+			buf.WriteByte(':')
+
+			cfg := s.PlatformConfigs[platform]
+			order := platformFieldOrder[platform]
+			if order == nil {
+				// 未知平台，使用默认序列化
+				d, _ := json.Marshal(cfg)
+				buf.Write(d)
+			} else {
+				buf.WriteByte('{')
+				first := true
+				// 按定义顺序输出已有字段
+				for _, key := range order {
+					v, ok := cfg[key]
+					if !ok {
+						continue
+					}
+					if !first {
+						buf.WriteByte(',')
+					}
+					first = false
+					kk, _ := json.Marshal(key)
+					buf.Write(kk)
+					buf.WriteByte(':')
+					vv, _ := json.Marshal(v)
+					buf.Write(vv)
+				}
+				// 输出不在 order ���的额外字段
+				for key, v := range cfg {
+					found := false
+					for _, ok := range order {
+						if ok == key {
+							found = true
+							break
+						}
+					}
+					if !found {
+						if !first {
+							buf.WriteByte(',')
+						}
+						first = false
+						kk, _ := json.Marshal(key)
+						buf.Write(kk)
+						buf.WriteByte(':')
+						vv, _ := json.Marshal(v)
+						buf.Write(vv)
+					}
+				}
+				buf.WriteByte('}')
+			}
+		}
+		buf.WriteByte('}')
+	}
+
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
+}
+
+// getConfig 获取当前平台的配置 map
 func (s *Setting) getConfig() map[string]any {
 	if s.PlatformConfigs == nil {
 		return nil
 	}
-	raw := s.PlatformConfigs[s.Platform]
-	if raw == nil {
-		return nil
-	}
-	var m map[string]any
-	if err := json.Unmarshal(raw, &m); err != nil {
-		return nil
-	}
-	return m
+	return s.PlatformConfigs[s.Platform]
 }
 
 // Get 获取当前平台的指定配置项
@@ -44,12 +129,8 @@ func (s *Setting) GetFrom(platform, key string) string {
 	if s.PlatformConfigs == nil {
 		return ""
 	}
-	raw := s.PlatformConfigs[platform]
-	if raw == nil {
-		return ""
-	}
-	var m map[string]any
-	if err := json.Unmarshal(raw, &m); err != nil {
+	m := s.PlatformConfigs[platform]
+	if m == nil {
 		return ""
 	}
 	v, _ := m[key].(string)
@@ -100,18 +181,14 @@ func (s *Setting) Validate() error {
 // SetPlatformConfig 设置指定平台的某个配置项
 func (s *Setting) SetPlatformConfig(platform, key string, value any) {
 	if s.PlatformConfigs == nil {
-		s.PlatformConfigs = make(map[string]json.RawMessage)
+		s.PlatformConfigs = make(map[string]map[string]any)
 	}
-	var m map[string]any
-	if raw := s.PlatformConfigs[platform]; raw != nil {
-		_ = json.Unmarshal(raw, &m)
-	}
+	m := s.PlatformConfigs[platform]
 	if m == nil {
 		m = make(map[string]any)
 	}
 	m[key] = value
-	data, _ := json.Marshal(m)
-	s.PlatformConfigs[platform] = data
+	s.PlatformConfigs[platform] = m
 }
 
 // SettingRepository 定义配置存储接口

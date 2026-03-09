@@ -10,7 +10,7 @@ export const useThemeStore = defineStore('theme', () => {
     (localStorage.getItem('app_theme_mode') as ThemeMode) || 'system'
   )
   const theme = ref<ThemeColor>(
-    (localStorage.getItem('app_theme_color') as ThemeColor) || 'default'
+    (localStorage.getItem('app_theme_color') as ThemeColor) || 'warm'
   )
   const systemIsDark = ref(
     window.matchMedia('(prefers-color-scheme: dark)').matches

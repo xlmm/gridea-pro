@@ -134,18 +134,12 @@ func getSettingsHandler(s *service.SettingService) server.ToolHandlerFunc {
 		// Mask sensitive data in platformConfigs
 		if setting.PlatformConfigs != nil {
 			sensitiveKeys := []string{"token", "password", "privateKey", "netlifyAccessToken"}
-			for platform, raw := range setting.PlatformConfigs {
-				var m map[string]any
-				if json.Unmarshal(raw, &m) != nil {
-					continue
-				}
+			for _, m := range setting.PlatformConfigs {
 				for _, key := range sensitiveKeys {
 					if _, ok := m[key]; ok {
 						m[key] = "***"
 					}
 				}
-				data, _ := json.Marshal(m)
-				setting.PlatformConfigs[platform] = data
 			}
 		}
 

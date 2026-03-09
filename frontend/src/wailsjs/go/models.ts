@@ -377,7 +377,7 @@ export namespace domain {
 	}
 	export class Setting {
 	    platform: string;
-	    platformConfigs?: Record<string, Array<number>>;
+	    platformConfigs?: Record<string, any>;
 	
 	    static createFrom(source: any = {}) {
 	        return new Setting(source);

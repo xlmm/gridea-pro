@@ -104,6 +104,7 @@
         "noSaveAndBack": "继续",
         "settings": "文章设置",
         "search": "搜索文章",
+        "feedFormat": "RSS/Feed 格式",
         "showFullText": "显示全文",
         "showAbstract": "仅显示摘要"
     },

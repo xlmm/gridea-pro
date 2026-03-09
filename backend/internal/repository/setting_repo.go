@@ -80,3 +80,10 @@ func (r *settingRepository) SaveSetting(ctx context.Context, setting domain.Sett
 	r.loaded = true
 	return nil
 }
+
+func (r *settingRepository) Invalidate() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.cache = nil
+	r.loaded = false
+}
