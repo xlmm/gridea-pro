@@ -21,6 +21,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch: # 允许手动触发测试
 
 # 防止前端构建 OOM
 env:
