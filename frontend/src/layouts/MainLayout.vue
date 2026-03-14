@@ -1,5 +1,8 @@
 <template>
   <div class="flex h-screen w-full overflow-hidden bg-background text-foreground">
+    <!-- Window Controls (Windows/Linux only) -->
+    <WindowControls />
+
     <!-- Sidebar -->
     <aside
 v-if="sidebarVisible"
@@ -170,6 +173,7 @@ import { Button } from '@/components/ui/button'
 import { EventsEmit, EventsOn, BrowserOpenURL } from '@/wailsjs/runtime'
 import { DeployToGit } from '@/wailsjs/go/facade/DeployFacade'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import WindowControls from '@/components/WindowControls/index.vue'
 import {
   DocumentTextIcon,
   QueueListIcon,

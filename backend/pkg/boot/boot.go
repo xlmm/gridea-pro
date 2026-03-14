@@ -202,14 +202,22 @@ func Run(assets embed.FS) {
 	menuQuitHandler = quitHandler
 	menuAppDir = appDir
 
-	// 构建应用菜单（传递 appDir 以支持文件/目录操作）
-	appMenu := buildMenu(application, aboutHandler, quitHandler, appDir)
+	// Windows/Linux 使用 Frameless 窗口，前端自绘窗口控制按钮
+	// macOS 保持原生标题栏 + 交通灯按钮
+	frameless := runtime.GOOS != "darwin"
+
+	var appMenu *menu.Menu
+	if !frameless {
+		// 仅 macOS 构建原生菜单
+		appMenu = buildMenu(application, aboutHandler, quitHandler, appDir)
+	}
 
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:  "Gridea Pro",
-		Width:  1280,
-		Height: 800,
+		Title:     "Gridea Pro",
+		Width:     1280,
+		Height:    800,
+		Frameless: frameless,
 		AssetServer: &assetserver.Options{
 			Assets:     assets,
 			Middleware: NewFileServerMiddleware(appDir), // Inject secure middleware
@@ -221,17 +229,19 @@ func Run(assets embed.FS) {
 			application.Startup(ctx)
 			services.Startup(ctx)
 
-			// 监听前端语言切换事件，运行时重建菜单
-			wailsRuntime.EventsOn(ctx, "app:change-locale", func(optionalData ...interface{}) {
-				if len(optionalData) > 0 {
-					if locale, ok := optionalData[0].(string); ok {
-						SetLocale(locale)
-						newMenu := buildMenu(menuApplication, menuAboutHandler, menuQuitHandler, menuAppDir)
-						wailsRuntime.MenuSetApplicationMenu(ctx, newMenu)
-						wailsRuntime.MenuUpdateApplicationMenu(ctx)
+			// 监听前端语言切换事件，运行时重建菜单（仅 macOS 有原生菜单）
+			if !frameless {
+				wailsRuntime.EventsOn(ctx, "app:change-locale", func(optionalData ...interface{}) {
+					if len(optionalData) > 0 {
+						if locale, ok := optionalData[0].(string); ok {
+							SetLocale(locale)
+							newMenu := buildMenu(menuApplication, menuAboutHandler, menuQuitHandler, menuAppDir)
+							wailsRuntime.MenuSetApplicationMenu(ctx, newMenu)
+							wailsRuntime.MenuUpdateApplicationMenu(ctx)
+						}
 					}
-				}
-			})
+				})
+			}
 		},
 		OnShutdown: application.Shutdown,
 		Menu:       appMenu,
@@ -254,25 +264,10 @@ func Run(assets embed.FS) {
 			services.CdnUpload,
 		},
 		Windows: &windows.Options{
-			WebviewIsTransparent: false,
-			WindowIsTranslucent:  false,
-			Theme:                windows.SystemDefault,
-			CustomTheme: &windows.ThemeSettings{
-				// Light mode: warm beige tones matching default warm theme
-				LightModeTitleBar:          windows.RGB(245, 242, 232), // #F5F2E8
-				LightModeTitleBarInactive:  windows.RGB(248, 246, 240), // #F8F6F0
-				LightModeTitleText:         windows.RGB(51, 51, 51),    // #333333
-				LightModeTitleTextInactive: windows.RGB(153, 153, 153), // #999999
-				LightModeBorder:            windows.RGB(230, 225, 215), // #E6E1D7
-				LightModeBorderInactive:    windows.RGB(238, 235, 228), // #EEEBE4
-				// Dark mode
-				DarkModeTitleBar:          windows.RGB(45, 42, 38),    // #2D2A26
-				DarkModeTitleBarInactive:  windows.RGB(35, 33, 30),    // #23211E
-				DarkModeTitleText:         windows.RGB(230, 230, 230), // #E6E6E6
-				DarkModeTitleTextInactive: windows.RGB(128, 128, 128), // #808080
-				DarkModeBorder:            windows.RGB(60, 57, 52),    // #3C3934
-				DarkModeBorderInactive:    windows.RGB(50, 47, 42),    // #322F2A
-			},
+			WebviewIsTransparent:              false,
+			WindowIsTranslucent:               false,
+			DisableFramelessWindowDecorations: false,
+			Theme:                             windows.SystemDefault,
 		},
 		Mac: &mac.Options{
 			TitleBar:             mac.TitleBarHiddenInset(),
