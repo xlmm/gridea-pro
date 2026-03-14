@@ -147,11 +147,10 @@ jobs:
         shell: pwsh
         run: |
           choco install innosetup -y
-          # 下载中文语言文件（chocolatey 安装不含非英语语言包）
           $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
-          $langUrl = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl"
+          $langUrl = "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl"
           Invoke-WebRequest -Uri $langUrl -OutFile "$langDir\ChineseSimplified.isl"
-
+          
       - name: Build Windows ${{ matrix.arch }}
         run: wails build -platform windows/${{ matrix.arch }} -clean -trimpath
 
