@@ -75,10 +75,13 @@ jobs:
         run: |
           echo "=== Before cleanup ==="
           df -h /
+          # Xcode 是最大头（~10GB+）
+          sudo rm -rf /Applications/Xcode*.app
           sudo rm -rf /Users/runner/Library/Android 2>/dev/null || true
-          sudo rm -rf /Applications/Xcode_*.app 2>/dev/null || true
+          sudo rm -rf /usr/local/share/dotnet 2>/dev/null || true
           sudo rm -rf /usr/local/share/powershell 2>/dev/null || true
           sudo rm -rf /usr/local/lib/node_modules 2>/dev/null || true
+          brew cleanup -s 2>/dev/null || true
           echo "=== After cleanup ==="
           df -h /
 
@@ -95,6 +98,15 @@ jobs:
 
       - name: Build macOS Universal App
         run: wails build -platform darwin/universal -clean -trimpath
+
+      - name: Clean build cache before DMG
+        run: |
+          go clean -cache
+          npm cache clean --force 2>/dev/null || true
+          rm -rf ~/.cache/go-build 2>/dev/null || true
+          rm -rf frontend/node_modules 2>/dev/null || true
+          echo "=== Disk space before DMG ==="
+          df -h /
 
       - name: List build output
         run: ls -la build/bin/
