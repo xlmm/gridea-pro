@@ -6,7 +6,8 @@
 #   2. 手动触发（workflow_dispatch）→ 仅测试构建，不创建 Release
 #
 # 构建产物（统一命名：Gridea.Pro_{version}_{os}_{arch}.{ext}）：
-#   macOS   → Gridea.Pro_v1.0.0_macos_universal.dmg
+#   macOS   → Gridea.Pro_v1.0.0_macos_arm64.dmg   (Apple Silicon)
+#             Gridea.Pro_v1.0.0_macos_amd64.dmg   (Intel)
 #   Windows → Gridea.Pro_v1.0.0_windows_amd64.exe
 #             Gridea.Pro_v1.0.0_windows_arm64.exe
 #   Linux   → Gridea.Pro_v1.0.0_linux_amd64.deb
@@ -59,31 +60,24 @@ jobs:
           fi
 
   # ===========================================================================
-  # macOS — Universal Binary (Intel + Apple Silicon)
+  # macOS — arm64 (Apple Silicon) + amd64 (Intel)
   # ===========================================================================
   build-macos:
     needs: prepare
     runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            platform: darwin/arm64
+          - arch: amd64
+            platform: darwin/amd64
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      - name: Free disk space
-        run: |
-          echo "=== Before cleanup ==="
-          df -h /
-          # Xcode 是最大头（~10GB+）
-          sudo rm -rf /Applications/Xcode*.app
-          sudo rm -rf /Users/runner/Library/Android 2>/dev/null || true
-          sudo rm -rf /usr/local/share/dotnet 2>/dev/null || true
-          sudo rm -rf /usr/local/share/powershell 2>/dev/null || true
-          sudo rm -rf /usr/local/lib/node_modules 2>/dev/null || true
-          brew cleanup -s 2>/dev/null || true
-          echo "=== After cleanup ==="
-          df -h /
 
       - uses: actions/setup-go@v5
         with:
@@ -96,17 +90,8 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Build macOS Universal App
-        run: wails build -platform darwin/universal -clean -trimpath
-
-      - name: Clean build cache before DMG
-        run: |
-          go clean -cache
-          npm cache clean --force 2>/dev/null || true
-          rm -rf ~/.cache/go-build 2>/dev/null || true
-          rm -rf frontend/node_modules 2>/dev/null || true
-          echo "=== Disk space before DMG ==="
-          df -h /
+      - name: Build macOS ${{ matrix.arch }}
+        run: wails build -platform ${{ matrix.platform }} -clean -trimpath
 
       - name: List build output
         run: ls -la build/bin/
@@ -117,11 +102,11 @@ jobs:
           hdiutil create -volname "${{ env.APP_NAME }}" \
             -srcfolder "${{ env.BIN_NAME }}.app" \
             -ov -format UDZO \
-            "${{ env.RELEASE_PREFIX }}_${VERSION}_macos_universal.dmg"
+            "${{ env.RELEASE_PREFIX }}_${VERSION}_macos_${{ matrix.arch }}.dmg"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-build
+          name: macos-build-${{ matrix.arch }}
           path: build/bin/*.dmg
           if-no-files-found: error
 
