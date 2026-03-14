@@ -215,7 +215,7 @@ jobs:
             libgtk-3-dev \
             libwebkit2gtk-4.0-dev \
             build-essential \
-            pkg-config
+            pkg-config \
             libfuse2
 
       - name: Install Wails CLI
