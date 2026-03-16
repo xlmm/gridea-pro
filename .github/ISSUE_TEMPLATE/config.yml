@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: "\U0001F4AC Discussions — Q&A"
+  - name: "\U0001F4AC 讨论区 — 问答"
     url: https://github.com/Gridea-Pro/gridea-pro/discussions/categories/q-a
-    about: Ask questions and get help from the community. Please don't open an issue for support requests.
-  - name: "\U0001F4AC Discussions — Feature Ideas"
+    about: 提问并获取社区帮助。请不要将使用问题作为 Issue 提交。
+  - name: "\U0001F4AC 讨论区 — 功能想法"
     url: https://github.com/Gridea-Pro/gridea-pro/discussions/categories/feature-requests
-    about: Browse and vote on feature ideas, or start a discussion before opening a formal request.
-  - name: "\U0001F4D6 Documentation"
+    about: 浏览和投票功能想法，或在提交正式请求前先发起讨论。
+  - name: "\U0001F4D6 文档"
     url: https://gridea.pro/docs
-    about: Check the documentation — your question might already be answered there.
+    about: 查阅文档——你的问题可能已经在那里有了答案。
