@@ -30,6 +30,10 @@ type CdnUploadService struct {
 	cdnSettingRepo domain.CdnSettingRepository
 	settingRepo    domain.SettingRepository
 	appDir         string
+
+	clientMu       sync.Mutex
+	cachedClient   *http.Client
+	cachedProxyURL string
 }
 
 func NewCdnUploadService(cdnSettingRepo domain.CdnSettingRepository, settingRepo domain.SettingRepository, appDir string) *CdnUploadService {
@@ -67,15 +71,31 @@ func newHTTPClient(proxyURL string) *http.Client {
 	}
 }
 
-// httpClient 根据当前代理设置返回合适的 HTTP client
+// httpClient 根据当前代理设置返回合适的 HTTP client。
+// 代理 client 会被缓存复用，只有代理地址变更时才重建，保证连接池有效。
 func (s *CdnUploadService) httpClient(ctx context.Context) *http.Client {
+	proxyURL := ""
 	if s.settingRepo != nil {
 		setting, err := s.settingRepo.GetSetting(ctx)
 		if err == nil && setting.ProxyEnabled && setting.ProxyURL != "" {
-			return newHTTPClient(setting.ProxyURL)
+			proxyURL = setting.ProxyURL
 		}
 	}
-	return http.DefaultClient
+
+	if proxyURL == "" {
+		return http.DefaultClient
+	}
+
+	s.clientMu.Lock()
+	defer s.clientMu.Unlock()
+
+	if s.cachedClient != nil && s.cachedProxyURL == proxyURL {
+		return s.cachedClient
+	}
+
+	s.cachedClient = newHTTPClient(proxyURL)
+	s.cachedProxyURL = proxyURL
+	return s.cachedClient
 }
 
 // ResolveSavePath 解析路径模板变量
