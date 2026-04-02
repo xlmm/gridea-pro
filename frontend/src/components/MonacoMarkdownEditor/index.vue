@@ -171,7 +171,7 @@ const initEditor = () => {
     automaticLayout: true,
     padding: { top: 24, bottom: 64 },
     fontFamily:
-      '"Fira Code", Inter, PingFang SC, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+      'ui-monospace, Menlo, Monaco, "Cascadia Code", "Segoe UI Mono", Consolas, "Courier New", monospace',
     unicodeHighlight: {
       ambiguousCharacters: false,
       invisibleCharacters: false,
@@ -287,8 +287,6 @@ defineExpose({
 </script>
 
 <style lang="less" scoped>
-/* @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap'); */
-
 .monaco-editor-wrapper {
   position: relative;
 }
