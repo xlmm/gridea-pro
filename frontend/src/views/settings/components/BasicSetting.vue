@@ -109,7 +109,7 @@ href="https://gridea.pro/netlify" target="_blank"
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
           <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.branch') }}</label>
           <div class="max-w-sm">
-            <Input v-model="form.branch" placeholder="master" class="" />
+            <Input v-model="form.branch" :placeholder="form.platform === 'github' ? 'main' : 'master'" class="" />
           </div>
         </div>
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
