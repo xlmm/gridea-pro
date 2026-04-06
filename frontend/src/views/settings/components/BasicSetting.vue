@@ -165,12 +165,6 @@ href="https://gridea.pro/netlify" target="_blank"
           </div>
         </div>
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
-          <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.sftpUsername') }}</label>
-          <div class="max-w-sm">
-            <Input v-model="form.username" class="" />
-          </div>
-        </div>
-        <div class="grid grid-cols-[180px_1fr] items-center gap-4">
           <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.connectType') }}</label>
           <div class="w-full max-w-sm">
             <Select :model-value="String(remoteType || '')" @update:model-value="(v) => remoteType = v">
@@ -182,6 +176,12 @@ href="https://gridea.pro/netlify" target="_blank"
                 <SelectItem value="key">SSH Key</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </div>
+        <div class="grid grid-cols-[180px_1fr] items-center gap-4">
+          <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.sftpUsername') }}</label>
+          <div class="max-w-sm">
+            <Input v-model="form.username" class="" />
           </div>
         </div>
         <div v-if="remoteType === 'password'" class="grid grid-cols-[180px_1fr] items-center gap-4">
