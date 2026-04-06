@@ -25,56 +25,58 @@ func NewScaffoldService(assets embed.FS) *ScaffoldService {
 	}
 }
 
-// InitSite checks if the site is initialized, if not, it copies default files
+// InitSite checks if the site is initialized, if not, it copies default files.
+// A .initialized marker file is used to track whether the site has been scaffolded.
+// Default content (posts, memos, etc.) is only copied on first initialization.
+// Essential directories and config patches are applied on every startup.
 func (s *ScaffoldService) InitSite(appDir string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// 1. Locate default-files source path in embed.FS
-	// Source path in embed.FS: frontend/dist/default-files or frontend/public/default-files
-	srcParams := []string{"frontend/dist/default-files", "frontend/public/default-files"}
-	var srcPath string
+	markerPath := filepath.Join(appDir, ".initialized")
+	isFirstInit := false
 
-	for _, p := range srcParams {
-		if _, err := fs.Stat(s.assets, p); err == nil {
-			srcPath = p
-			break
+	if _, err := os.Stat(markerPath); os.IsNotExist(err) {
+		isFirstInit = true
+	}
+
+	if isFirstInit {
+		// 1. Locate default-files source path in embed.FS
+		srcParams := []string{"frontend/dist/default-files", "frontend/public/default-files"}
+		var srcPath string
+
+		for _, p := range srcParams {
+			if _, err := fs.Stat(s.assets, p); err == nil {
+				srcPath = p
+				break
+			}
 		}
+
+		if srcPath == "" {
+			return fmt.Errorf("default-files not found in assets")
+		}
+
+		// 2. Recursively copy all default files to appDir
+		if err := s.copyDirFromEmbed(srcPath, appDir); err != nil {
+			return fmt.Errorf("failed to copy default files: %w", err)
+		}
+
+		// 3. Fill date placeholders in default posts and memos with current time
+		s.fillDefaultDates(appDir)
+
+		// 4. Create marker file
+		_ = os.WriteFile(markerPath, []byte("Gridea Pro initialized\n"), 0644)
 	}
 
-	if srcPath == "" {
-		return fmt.Errorf("default-files not found in assets")
-	}
+	// Always ensure essential directories exist
+	_ = os.MkdirAll(filepath.Join(appDir, "output"), 0755)
 
-	// 2. Recursively copy all default files to appDir
-	// This will create directories (themes, posts, images, etc.) and copy files.
-	// Existing files will be skipped.
-	if err := s.copyDirFromEmbed(srcPath, appDir); err != nil {
-		return fmt.Errorf("failed to copy default files: %w", err)
-	}
-
-	// 3. Fill empty dates in default posts and memos with current time
-	s.fillDefaultDates(appDir)
-
-	// 4. Create directories that might not be in default-files (e.g. output)
-	// Ensure essential directories exist just in case
-	ensureDirs := []string{
-		filepath.Join(appDir, "output"),
-	}
-	for _, dir := range ensureDirs {
-		_ = os.MkdirAll(dir, 0755)
-	}
-
-	// 5. Patch config.json with dynamic sourceFolder
+	// Always patch config.json with current sourceFolder
 	configPath := filepath.Join(appDir, "config", "config.json")
-	// Only patch if file exists (it should, copied from defaults)
 	if content, err := os.ReadFile(configPath); err == nil {
 		var config map[string]interface{}
 		if err := json.Unmarshal(content, &config); err == nil {
-			// Update sourceFolder to actual appDir
 			config["sourceFolder"] = appDir
-
-			// Write back
 			if data, err := json.MarshalIndent(config, "", "  "); err == nil {
 				_ = os.WriteFile(configPath, data, 0644)
 			}
