@@ -38,22 +38,18 @@ v-for="p in ['github', 'netlify', 'vercel', 'coding', 'gitee', 'sftp']" :key="St
             <Input v-model="form.netlifySiteId" class="" />
           </div>
         </div>
-        <div class="grid grid-cols-[180px_1fr] items-center gap-4">
-          <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.accessToken') }}</label>
+        <div class="grid grid-cols-[180px_1fr] items-start gap-4">
+          <label class="text-sm font-medium text-right text-muted-foreground pt-2">{{ t('settings.network.accessToken') }}</label>
           <div class="relative max-w-sm">
             <Input v-model="form.netlifyAccessToken" :type="passVisible ? 'text' : 'password'" class="pr-8" />
             <component
 :is="passVisible ? EyeIcon : EyeSlashIcon"
               class="absolute right-2.5 top-3 w-4 h-4 cursor-pointer text-muted-foreground/70 hover:text-foreground transition-colors"
               @click="passVisible = !passVisible" />
-          </div>
-        </div>
-        <div class="grid grid-cols-[180px_1fr] items-center gap-4">
-          <div></div>
-          <div>
-            <a
-href="https://gridea.pro/netlify" target="_blank"
-              class="text-primary hover:underline text-sm opacity-80 decoration-primary/50 underline-offset-4">{{ t('settings.network.howToConfigure') }}</a>
+            <div class="text-xs text-muted-foreground mt-1.5">
+              <a href="https://gridea.pro/netlify" target="_blank"
+                class="text-primary/70 hover:text-primary hover:underline decoration-primary/50 underline-offset-4">{{ t('settings.network.netlifyGuide') }}</a>
+            </div>
           </div>
         </div>
       </template>

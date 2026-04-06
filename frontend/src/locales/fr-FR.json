@@ -291,7 +291,7 @@
             "checking": "Vérification...",
             "connectSuccess": "Connexion distante réussie",
             "connectFailed": "Échec de la connexion distante, veuillez vérifier les paramètres du dépôt, du nom d'utilisateur et du jeton",
-            "howToConfigure": "Comment configurer ?",
+            "netlifyGuide": "Comment obtenir le Site ID et l'Access Token ?",
             "projectName": "Nom du projet",
             "vercelProjectDesc": "Nom du projet sur Vercel",
             "vercelTokenDesc": "Générer depuis Paramètres du compte -> Jetons",

@@ -291,7 +291,7 @@
             "checking": "检测中...",
             "connectSuccess": "远程连接成功",
             "connectFailed": "远程连接失败，请检查仓库、用户名和令牌设置",
-            "howToConfigure": "如何配置？",
+            "netlifyGuide": "如何获取 Site ID 和 Access Token？",
             "projectName": "项目名称",
             "vercelProjectDesc": "Vercel 上的项目名称",
             "vercelTokenDesc": "从 Account Settings -> Tokens 生成",

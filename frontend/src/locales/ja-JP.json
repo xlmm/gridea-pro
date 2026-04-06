@@ -291,7 +291,7 @@
             "checking": "確認中...",
             "connectSuccess": "リモート接続に成功しました",
             "connectFailed": "リモート接続に失敗しました。リポジトリ名、ユーザー名、トークンを確認してください",
-            "howToConfigure": "設定方法",
+            "netlifyGuide": "Site ID と Access Token の取得方法",
             "projectName": "プロジェクト名",
             "vercelProjectDesc": "Vercel 上のプロジェクト名",
             "vercelTokenDesc": "Account Settings -> Tokens から生成してください",

@@ -291,7 +291,7 @@
             "checking": "확인 중...",
             "connectSuccess": "원격 연결 성공",
             "connectFailed": "원격 연결 실패, 저장소, 사용자 이름 및 토큰 설정을 확인하세요",
-            "howToConfigure": "어떻게 설정하나요?",
+            "netlifyGuide": "Site ID와 Access Token을 얻는 방법은?",
             "projectName": "프로젝트 이름",
             "vercelProjectDesc": "Vercel의 프로젝트 이름",
             "vercelTokenDesc": "Account Settings -> Tokens에서 생성",

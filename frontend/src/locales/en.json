@@ -291,7 +291,7 @@
             "checking": "Checking...",
             "connectSuccess": "Remote connection succeeded",
             "connectFailed": "Remote connection failed, please check repository, username and token settings",
-            "howToConfigure": "How to configure?",
+            "netlifyGuide": "How to get Site ID and Access Token?",
             "projectName": "Project Name",
             "vercelProjectDesc": "Project name on Vercel",
             "vercelTokenDesc": "Generate from Account Settings -> Tokens",

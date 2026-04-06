@@ -291,7 +291,7 @@
             "checking": "Проверка...",
             "connectSuccess": "Удалённое подключение успешно",
             "connectFailed": "Ошибка подключения. Проверьте репозиторий, имя пользователя и токен.",
-            "howToConfigure": "Как настроить?",
+            "netlifyGuide": "Как получить Site ID и Access Token?",
             "projectName": "Название проекта",
             "vercelProjectDesc": "Название проекта на Vercel",
             "vercelTokenDesc": "Сгенерируйте в Account Settings -> Tokens",

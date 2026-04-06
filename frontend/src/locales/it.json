@@ -291,7 +291,7 @@
             "checking": "Verifica in corso...",
             "connectSuccess": "Connessione remota riuscita",
             "connectFailed": "Connessione remota fallita, verifica le impostazioni di repository, nome utente e token",
-            "howToConfigure": "Come configurare?",
+            "netlifyGuide": "Come ottenere Site ID e Access Token?",
             "projectName": "Nome progetto",
             "vercelProjectDesc": "Nome del progetto su Vercel",
             "vercelTokenDesc": "Genera da Impostazioni account -> Token",

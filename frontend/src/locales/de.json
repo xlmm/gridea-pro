@@ -291,7 +291,7 @@
             "checking": "Prüfe...",
             "connectSuccess": "Verbindung zum Server erfolgreich",
             "connectFailed": "Verbindung fehlgeschlagen, bitte prüfen Sie Repository, Benutzername und Token",
-            "howToConfigure": "Wie konfigurieren?",
+            "netlifyGuide": "Wie erhalte ich Site ID und Access Token?",
             "projectName": "Projektname",
             "vercelProjectDesc": "Projektname auf Vercel",
             "vercelTokenDesc": "Erstellen unter Kontoeinstellungen -> Tokens",
