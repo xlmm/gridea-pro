@@ -25,7 +25,7 @@ var platformFieldOrder = map[string][]string{
 	"coding": {"domain", "repository", "branch", "username", "email", "tokenUsername", "token", "cname"},
 	"netlify": {"domain", "netlifySiteId", "netlifyAccessToken"},
 	"vercel": {"domain", "repository", "token", "cname"},
-	"sftp":   {"domain", "port", "server", "username", "password", "privateKey", "remotePath"},
+	"sftp":   {"domain", "server", "port", "username", "password", "privateKey", "remotePath"},
 }
 
 // MarshalJSON 自定义 JSON 序列化，确保平台配置项按前端表单顺序输出

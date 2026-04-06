@@ -153,15 +153,15 @@ href="https://gridea.pro/netlify" target="_blank"
       <!-- SFTP -->
       <template v-if="form.platform === 'sftp'">
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
-          <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.port') }}</label>
+          <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.server') }}</label>
           <div class="max-w-sm">
-            <Input v-model="form.port" type="number" class="" />
+            <Input v-model="form.server" placeholder="192.168.1.100" class="" />
           </div>
         </div>
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
-          <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.server') }}</label>
+          <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.port') }}</label>
           <div class="max-w-sm">
-            <Input v-model="form.server" class="" />
+            <Input v-model="form.port" type="number" placeholder="22" class="" />
           </div>
         </div>
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
@@ -283,7 +283,7 @@ const platformFields: Record<string, string[]> = {
   coding: ['domain', 'repository', 'branch', 'username', 'email', 'tokenUsername', 'token', 'cname'],
   netlify: ['domain', 'netlifySiteId', 'netlifyAccessToken'],
   vercel: ['domain', 'repository', 'token', 'cname'],
-  sftp: ['domain', 'port', 'server', 'username', 'password', 'privateKey', 'remotePath'],
+  sftp: ['domain', 'server', 'port', 'username', 'password', 'privateKey', 'remotePath'],
 }
 
 // 平台配置缓存
