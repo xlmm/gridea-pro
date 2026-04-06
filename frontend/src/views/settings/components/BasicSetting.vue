@@ -24,19 +24,9 @@ v-for="p in ['github', 'netlify', 'vercel', 'coding', 'gitee', 'sftp']" :key="St
       <!-- Domain (non-SFTP platforms) -->
       <div v-if="form.platform !== 'sftp'" class="grid grid-cols-[180px_1fr] items-center gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.domain') }}</label>
-        <div class="flex gap-2 max-w-sm">
-          <div class="w-28">
-            <Select :model-value="String(protocol || '')" @update:model-value="(v) => protocol = v">
-              <SelectTrigger class="">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="https://">https://</SelectItem>
-                <SelectItem value="http://">http://</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Input v-model="form.domain" placeholder="mydomain.com" class="flex-1" />
+        <div class="relative max-w-sm">
+          <span class="absolute left-3 top-2.5 text-muted-foreground text-sm">https://</span>
+          <Input v-model="form.domain" placeholder="mydomain.com" class="pl-[4.5rem]" />
         </div>
       </div>
 
@@ -215,19 +205,9 @@ href="https://gridea.pro/netlify" target="_blank"
         <!-- SFTP: Domain at the end -->
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
           <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.domain') }}</label>
-          <div class="flex gap-2 max-w-sm">
-            <div class="w-28">
-              <Select :model-value="String(protocol || '')" @update:model-value="(v) => protocol = v">
-                <SelectTrigger class="">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="https://">https://</SelectItem>
-                  <SelectItem value="http://">http://</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Input v-model="form.domain" placeholder="myblog.com" class="flex-1" />
+          <div class="relative max-w-sm">
+            <span class="absolute left-3 top-2.5 text-muted-foreground text-sm">https://</span>
+            <Input v-model="form.domain" placeholder="myblog.com" class="pl-[4.5rem]" />
           </div>
         </div>
       </template>
@@ -297,7 +277,6 @@ const siteStore = useSiteStore()
 const passVisible = ref(false)
 const detectLoading = ref(false)
 const remoteType = ref('password')
-const protocol = ref('https://')
 
 const selectKeyFile = async () => {
   const filePath = await OpenKeyFileDialog()
@@ -346,8 +325,8 @@ const savePlatformConfig = (platform: string) => {
   const config: Record<string, any> = {}
   for (const field of fields) {
     if (field === 'domain') {
-      // domain 保存时带上协议前缀
-      config[field] = `${protocol.value}${form.domain}`
+      // domain 保存时固定 https:// 前缀
+      config[field] = form.domain ? `https://${form.domain}` : ''
     } else {
       config[field] = form[field] || ''
     }
@@ -375,15 +354,10 @@ const restorePlatformConfig = (platform: string) => {
   if (config) {
     for (const [key, val] of Object.entries(config)) {
       if (key === 'domain') {
-        // domain 拆分协议
+        // domain 去掉协议前缀
         const domainVal = val || ''
         const idx = domainVal.indexOf('://')
-        if (idx !== -1) {
-          form.domain = domainVal.substring(idx + 3)
-          protocol.value = domainVal.substring(0, idx + 3)
-        } else {
-          form.domain = domainVal
-        }
+        form.domain = idx !== -1 ? domainVal.substring(idx + 3) : domainVal
       } else {
         ;(form as any)[key] = val || ''
       }
@@ -478,12 +452,11 @@ onMounted(() => {
   form.proxyEnabled = setting.proxyEnabled || false
   form.proxyURL = setting.proxyURL || ''
 
-  // 5. 处理 domain 协议分离（restorePlatformConfig 恢复的是含协议的完整 domain）
+  // 5. domain 去掉协议前缀（restorePlatformConfig 已处理，这里兜底）
   const domainVal = form.domain || ''
   const protocolEndIndex = domainVal.indexOf('://')
   if (protocolEndIndex !== -1) {
     form.domain = domainVal.substring(protocolEndIndex + 3)
-    protocol.value = domainVal.substring(0, protocolEndIndex + 3)
   }
 
   if (form.privateKey) {
