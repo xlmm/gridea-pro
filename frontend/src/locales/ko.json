@@ -145,6 +145,7 @@
         "sites": {
             "title": "사이트",
             "add": "사이트 추가",
+            "edit": "사이트 편집",
             "name": "사이트 이름",
             "path": "소스 폴더 경로",
             "namePlaceholder": "예: 내 블로그",

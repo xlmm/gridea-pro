@@ -145,6 +145,7 @@
         "sites": {
             "title": "Sites",
             "add": "Add Site",
+            "edit": "Edit Site",
             "name": "Site Name",
             "path": "Source Folder Path",
             "namePlaceholder": "e.g. My Blog",

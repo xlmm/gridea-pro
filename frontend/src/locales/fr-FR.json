@@ -145,6 +145,7 @@
         "sites": {
             "title": "Sites",
             "add": "Ajouter un site",
+            "edit": "Modifier le site",
             "name": "Nom du site",
             "path": "Chemin du dossier source",
             "namePlaceholder": "ex : Mon blog",

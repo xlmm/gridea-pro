@@ -22,10 +22,8 @@ type SiteEntry struct {
 
 // AppConfig 定义应用级别的全局配置
 type AppConfig struct {
-	// SourceFolder 站点源文件目录（兼容旧版）
-	SourceFolder string      `json:"sourceFolder"`
 	// Sites 多站点列表
-	Sites        []SiteEntry `json:"sites,omitempty"`
+	Sites []SiteEntry `json:"sites,omitempty"`
 }
 
 // ConfigManager 负责管理 AppConfig 的加载和保存
@@ -87,24 +85,6 @@ func (m *ConfigManager) SaveConfig(config *AppConfig) error {
 	return os.WriteFile(m.configPath, data, 0600)
 }
 
-// UpdateSourceFolder 更新源文件路径并保存
-func (m *ConfigManager) UpdateSourceFolder(path string) error {
-	config, err := m.LoadConfig()
-	if err != nil {
-		// 如果加载出错（非文件不存在），尝试创建一个新的覆盖？
-		// 为了稳健，如果加载出错我们还是应该返回错误，除非是 IsNotExist 已经被 LoadConfig 处理了。
-		// LoadConfig 已经处理了 IsNotExist 返回空配置。
-		// 所以这里的 err 是真正的 IO 错误或解析错误。
-		// 我们可以选择覆盖，或者返回错误。鉴于这是一个设置更新操作，
-		// 如果配置文件损坏，从头开始可能更安全？或者报错让用户知道？
-		// 这里的逻辑保持简单：如果出错，就当做新配置开始。
-		config = &AppConfig{}
-	}
-
-	config.SourceFolder = path
-	return m.SaveConfig(config)
-}
-
 // GetSites 获取站点列表
 func (m *ConfigManager) GetSites() ([]SiteEntry, error) {
 	config, err := m.LoadConfig()
@@ -121,13 +101,6 @@ func (m *ConfigManager) SaveSites(sites []SiteEntry) error {
 		config = &AppConfig{}
 	}
 	config.Sites = sites
-	// 同步 SourceFolder 为活跃站点路径（兼容旧版）
-	for _, s := range sites {
-		if s.Active {
-			config.SourceFolder = s.Path
-			break
-		}
-	}
 	return m.SaveConfig(config)
 }
 
@@ -145,8 +118,8 @@ func (m *ConfigManager) GetActiveSite() (*SiteEntry, error) {
 	return nil, nil
 }
 
-// MigrateToSites 将旧的 SourceFolder 迁移为 Sites 列表
-// 如果 Sites 已有数据则不迁移
+// MigrateToSites 确保 Sites 列表存在
+// 如果 Sites 已有数据则不操作，否则创建默认站点
 func (m *ConfigManager) MigrateToSites(defaultPath string) ([]SiteEntry, error) {
 	config, err := m.LoadConfig()
 	if err != nil {
@@ -157,16 +130,9 @@ func (m *ConfigManager) MigrateToSites(defaultPath string) ([]SiteEntry, error) 
 		return config.Sites, nil
 	}
 
-	// 迁移旧配置
-	path := config.SourceFolder
-	if path == "" {
-		path = defaultPath
-	}
-
 	config.Sites = []SiteEntry{
-		{Name: "My Site", Path: path, Active: true},
+		{Name: "My Site", Path: defaultPath, Active: true},
 	}
-	config.SourceFolder = path
 
 	if err := m.SaveConfig(config); err != nil {
 		return nil, err

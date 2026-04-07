@@ -56,7 +56,7 @@ v-for="item in navItems" :key="item.key"
         <draggable v-model="sites" handle=".handle" item-key="path" @change="handleSiteSort">
           <template #item="{ element: site }">
             <div
-              class="group flex items-center gap-3 px-4 py-3 mb-2 rounded-xl border transition-all duration-200"
+              class="group flex items-center gap-3 px-4 py-3 mb-2 rounded-lg border transition-all duration-200"
               :class="site.active
                 ? 'bg-primary/5 border-primary/30'
                 : 'bg-card/50 border-border/50 hover:bg-primary/2 hover:border-primary/20'">
@@ -71,17 +71,24 @@ v-for="item in navItems" :key="item.key"
                 <div class="text-xs text-muted-foreground/60 truncate mt-0.5">{{ site.path }}</div>
               </div>
 
-              <!-- Switch 开关 -->
-              <Switch
-                :checked="site.active" size="sm"
-                @update:checked="(v: boolean) => handleSwitchSite(site, v)" />
+              <!-- 编辑按钮 -->
+              <button
+                class="text-muted-foreground/30 hover:text-foreground transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                @click="handleEditSite(site)">
+                <PencilSquareIcon class="size-3.5" />
+              </button>
 
               <!-- 删除按钮 -->
               <button
                 class="text-muted-foreground/30 hover:text-destructive transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
                 @click="handleDeleteSite(site)">
-                <TrashIcon class="size-4" />
+                <TrashIcon class="size-3.5" />
               </button>
+
+              <!-- Switch 开关 -->
+              <Switch
+                :checked="site.active" size="sm"
+                @update:checked="(v: boolean) => handleSwitchSite(site, v)" />
             </div>
           </template>
         </draggable>
@@ -104,11 +111,11 @@ v-for="item in navItems" :key="item.key"
       </div>
     </div>
 
-    <!-- 添加站点对话框 -->
+    <!-- 添加/编辑站点对话框 -->
     <Dialog v-model:open="showAddDialog">
       <DialogContent class="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>{{ t('settings.sites.add') }}</DialogTitle>
+          <DialogTitle>{{ editingSite ? t('settings.sites.edit') : t('settings.sites.add') }}</DialogTitle>
         </DialogHeader>
         <div class="space-y-4 py-4">
           <div>
@@ -125,9 +132,15 @@ v-for="item in navItems" :key="item.key"
             </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" @click="showAddDialog = false">{{ t('common.cancel') }}</Button>
-          <Button :disabled="!newSiteName || !newSitePath" @click="confirmAddSite">{{ t('common.confirm') }}</Button>
+        <DialogFooter class="gap-3">
+          <Button
+variant="outline"
+            class="w-18 h-8 text-xs justify-center rounded-full border border-primary/20 text-primary/80 hover:bg-primary/5 hover:text-primary cursor-pointer"
+            @click="showAddDialog = false">{{ t('common.cancel') }}</Button>
+          <Button
+variant="default"
+            class="w-18 h-8 text-xs justify-center rounded-full bg-primary text-background hover:bg-primary/90 cursor-pointer"
+            :disabled="!newSiteName || !newSitePath" @click="confirmAddSite">{{ t('common.save') }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -165,6 +178,7 @@ import {
   PlusIcon,
   Bars3Icon,
   TrashIcon,
+  PencilSquareIcon,
 } from '@heroicons/vue/24/outline'
 import { EventsEmit, BrowserOpenURL } from '@/wailsjs/runtime'
 import { OpenFolderDialog, GetSites, AddSite, RemoveSite, UpdateSites, SwitchSite } from '@/wailsjs/go/app/App'
@@ -190,6 +204,7 @@ const newSiteName = ref('')
 const newSitePath = ref('')
 const showDeleteDialog = ref(false)
 const siteToDelete = ref<SiteEntry | null>(null)
+const editingSite = ref<SiteEntry | null>(null)
 const switching = ref(false)
 
 const languageOptions: { value: LocaleType; label: string }[] = [
@@ -240,8 +255,16 @@ const saveLanguage = async (val: string) => {
 
 // 站点管理
 const handleAddSite = () => {
+  editingSite.value = null
   newSiteName.value = ''
   newSitePath.value = ''
+  showAddDialog.value = true
+}
+
+const handleEditSite = (site: SiteEntry) => {
+  editingSite.value = site
+  newSiteName.value = site.name
+  newSitePath.value = site.path
   showAddDialog.value = true
 }
 
@@ -259,12 +282,25 @@ const selectNewSitePath = async () => {
 
 const confirmAddSite = async () => {
   try {
-    const result = await AddSite(newSiteName.value, newSitePath.value)
-    sites.value = result || []
-    showAddDialog.value = false
-    toast.success(t('settings.sites.added'))
+    if (editingSite.value) {
+      // 编辑模式：更新本地列表中的站点信息
+      const idx = sites.value.findIndex(s => s.path === editingSite.value!.path)
+      if (idx !== -1) {
+        sites.value[idx].name = newSiteName.value
+        sites.value[idx].path = newSitePath.value
+      }
+      await UpdateSites(sites.value)
+      showAddDialog.value = false
+      toast.success(t('common.saved'))
+    } else {
+      // 添加模式
+      const result = await AddSite(newSiteName.value, newSitePath.value)
+      sites.value = result || []
+      showAddDialog.value = false
+      toast.success(t('settings.sites.added'))
+    }
   } catch (e: any) {
-    toast.error(e.message || 'Failed to add site')
+    toast.error(e.message || 'Failed to save site')
   }
 }
 

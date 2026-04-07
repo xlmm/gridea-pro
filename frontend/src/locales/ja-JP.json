@@ -145,6 +145,7 @@
         "sites": {
             "title": "サイト",
             "add": "サイトを追加",
+            "edit": "サイトを編集",
             "name": "サイト名",
             "path": "ソースフォルダパス",
             "namePlaceholder": "例：マイブログ",

@@ -145,6 +145,7 @@
         "sites": {
             "title": "Sitios",
             "add": "Añadir sitio",
+            "edit": "Editar sitio",
             "name": "Nombre del sitio",
             "path": "Ruta de la carpeta fuente",
             "namePlaceholder": "ej: Mi blog",

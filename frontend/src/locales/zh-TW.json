@@ -145,6 +145,7 @@
         "sites": {
             "title": "站點",
             "add": "新增站點",
+            "edit": "編輯站點",
             "name": "站點名稱",
             "path": "來源資料夾路徑",
             "namePlaceholder": "如：我的部落格",

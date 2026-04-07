@@ -143,8 +143,9 @@
             "saveError": "保存失败"
         },
         "sites": {
-            "title": "站点",
+            "title": "站 点",
             "add": "添加站点",
+            "edit": "编辑站点",
             "name": "站点名称",
             "path": "源文件夹路径",
             "namePlaceholder": "如：我的博客",
@@ -188,7 +189,7 @@
             "light": "浅色",
             "dark": "深色",
             "personalization": "个性化",
-            "appearance": "外观",
+            "appearance": "外 观",
             "default": "默认",
             "imageUrlPlaceholder": "输入在线图片链接或点击下方虚线框上传",
             "removeImage": "移除图片",

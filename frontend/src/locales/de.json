@@ -145,6 +145,7 @@
         "sites": {
             "title": "Websites",
             "add": "Website hinzufügen",
+            "edit": "Website bearbeiten",
             "name": "Website-Name",
             "path": "Quellordner-Pfad",
             "namePlaceholder": "z.B. Mein Blog",
