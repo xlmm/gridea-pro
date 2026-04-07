@@ -25,7 +25,7 @@ var platformFieldOrder = map[string][]string{
 	"coding": {"domain", "repository", "branch", "username", "email", "tokenUsername", "token", "cname"},
 	"netlify": {"domain", "netlifySiteId", "netlifyAccessToken"},
 	"vercel": {"domain", "repository", "token", "cname"},
-	"sftp":   {"domain", "server", "port", "username", "password", "privateKey", "remotePath"},
+	"sftp":   {"domain", "transferProtocol", "server", "port", "username", "password", "privateKey", "remotePath"},
 }
 
 // MarshalJSON 自定义 JSON 序列化，确保平台配置项按前端表单顺序输出
@@ -191,6 +191,9 @@ func (s *Setting) Port() string { return s.Get("port") }
 
 // RemotePath 当前平台的远程路径
 func (s *Setting) RemotePath() string { return s.Get("remotePath") }
+
+// TransferProtocol 当前平台的传输协议（sftp 或 ftp）
+func (s *Setting) TransferProtocol() string { return s.Get("transferProtocol") }
 
 // Validate 校验配置数据
 func (s *Setting) Validate() error {

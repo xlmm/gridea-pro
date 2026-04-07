@@ -300,6 +300,7 @@
             "siteId": "Seiten-ID",
             "accessToken": "Zugriffstoken",
             "port": "Port",
+            "transferProtocol": "Protokoll",
             "server": "Server",
             "connectType": "Verbindungstyp",
             "password": "Passwort",

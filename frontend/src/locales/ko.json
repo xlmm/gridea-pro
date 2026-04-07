@@ -300,6 +300,7 @@
             "siteId": "Site ID",
             "accessToken": "Access Token",
             "port": "포트",
+            "transferProtocol": "프로토콜",
             "server": "서버",
             "connectType": "연결 방식",
             "password": "비밀번호",

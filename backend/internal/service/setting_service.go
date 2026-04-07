@@ -18,6 +18,7 @@ import (
 	gitconfig "github.com/go-git/go-git/v5/config"
 	gittransport "github.com/go-git/go-git/v5/plumbing/transport"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/jlaffaye/ftp"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -221,57 +222,82 @@ func (s *SettingService) RemoteDetect(ctx context.Context, setting domain.Settin
 			break
 		}
 
-		sftpPort := 22
-		if p := setting.Port(); p != "" {
-			if v, err := strconv.Atoi(p); err == nil && v > 0 {
-				sftpPort = v
-			}
-		}
-
-		var authMethods []ssh.AuthMethod
-		if pk := setting.PrivateKey(); pk != "" {
-			var keyData []byte
-			if strings.HasPrefix(pk, "-----BEGIN") {
-				keyData = []byte(pk)
-			} else {
-				var readErr error
-				keyData, readErr = os.ReadFile(pk)
-				if readErr != nil {
-					message = fmt.Sprintf("读取私钥失败: %v", readErr)
-					break
+		if setting.TransferProtocol() == "ftp" {
+			// FTP 连接测试
+			ftpPort := 21
+			if p := setting.Port(); p != "" {
+				if v, err := strconv.Atoi(p); err == nil && v > 0 {
+					ftpPort = v
 				}
 			}
-			signer, parseErr := ssh.ParsePrivateKey(keyData)
-			if parseErr != nil {
-				message = fmt.Sprintf("解析私钥失败: %v", parseErr)
+			ftpAddr := fmt.Sprintf("%s:%d", server, ftpPort)
+			ftpConn, ftpErr := ftp.Dial(ftpAddr, ftp.DialWithTimeout(10*time.Second))
+			if ftpErr != nil {
+				message = fmt.Sprintf("FTP 连接失败: %v", ftpErr)
 				break
 			}
-			authMethods = append(authMethods, ssh.PublicKeys(signer))
-		}
-		if pw := setting.Password(); pw != "" {
-			authMethods = append(authMethods, ssh.Password(pw))
-		}
+			if loginErr := ftpConn.Login(setting.Username(), setting.Password()); loginErr != nil {
+				ftpConn.Quit()
+				message = fmt.Sprintf("FTP 登录失败: %v", loginErr)
+				break
+			}
+			ftpConn.Quit()
+			success = true
+			message = "FTP 连接成功"
+		} else {
+			// SFTP 连接测试
+			sftpPort := 22
+			if p := setting.Port(); p != "" {
+				if v, err := strconv.Atoi(p); err == nil && v > 0 {
+					sftpPort = v
+				}
+			}
 
-		if len(authMethods) == 0 {
-			message = "密码和私钥均为空"
-			break
-		}
+			var authMethods []ssh.AuthMethod
+			if pk := setting.PrivateKey(); pk != "" {
+				var keyData []byte
+				if strings.HasPrefix(pk, "-----BEGIN") {
+					keyData = []byte(pk)
+				} else {
+					var readErr error
+					keyData, readErr = os.ReadFile(pk)
+					if readErr != nil {
+						message = fmt.Sprintf("读取私钥失败: %v", readErr)
+						break
+					}
+				}
+				signer, parseErr := ssh.ParsePrivateKey(keyData)
+				if parseErr != nil {
+					message = fmt.Sprintf("解析私钥失败: %v", parseErr)
+					break
+				}
+				authMethods = append(authMethods, ssh.PublicKeys(signer))
+			}
+			if pw := setting.Password(); pw != "" {
+				authMethods = append(authMethods, ssh.Password(pw))
+			}
 
-		sshConfig := &ssh.ClientConfig{
-			User:            setting.Username(),
-			Auth:            authMethods,
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Timeout:         10 * time.Second,
-		}
+			if len(authMethods) == 0 {
+				message = "密码和私钥均为空"
+				break
+			}
 
-		sshConn, dialErr := ssh.Dial("tcp", fmt.Sprintf("%s:%d", server, sftpPort), sshConfig)
-		if dialErr != nil {
-			message = fmt.Sprintf("SSH 连接失败: %v", dialErr)
-			break
+			sshConfig := &ssh.ClientConfig{
+				User:            setting.Username(),
+				Auth:            authMethods,
+				HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+				Timeout:         10 * time.Second,
+			}
+
+			sshConn, dialErr := ssh.Dial("tcp", fmt.Sprintf("%s:%d", server, sftpPort), sshConfig)
+			if dialErr != nil {
+				message = fmt.Sprintf("SSH 连接失败: %v", dialErr)
+				break
+			}
+			sshConn.Close()
+			success = true
+			message = "SFTP 连接成功"
 		}
-		sshConn.Close()
-		success = true
-		message = "SFTP 连接成功"
 
 	default:
 		message = "不支持的平台类型"

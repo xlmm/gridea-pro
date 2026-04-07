@@ -18,6 +18,7 @@ export interface ISettingForm {
   tokenUsername: string
   token: string
   cname: string
+  transferProtocol: string
   port: string
   server: string
   password: string

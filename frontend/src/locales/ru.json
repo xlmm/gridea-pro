@@ -300,6 +300,7 @@
             "siteId": "ID сайта",
             "accessToken": "Токен доступа",
             "port": "Порт",
+            "transferProtocol": "Протокол",
             "server": "Сервер",
             "connectType": "Тип подключения",
             "password": "Пароль",

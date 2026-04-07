@@ -136,8 +136,22 @@ v-for="p in ['github', 'netlify', 'vercel', 'coding', 'gitee', 'sftp']" :key="St
         </div>
       </template>
 
-      <!-- SFTP -->
+      <!-- SFTP / FTP -->
       <template v-if="form.platform === 'sftp'">
+        <div class="grid grid-cols-[180px_1fr] items-center gap-4">
+          <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.transferProtocol') }}</label>
+          <div class="w-full max-w-sm">
+            <Select :model-value="form.transferProtocol || 'sftp'" @update:model-value="handleProtocolChange">
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sftp">SFTP</SelectItem>
+                <SelectItem value="ftp">FTP</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
           <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.server') }}</label>
           <div class="max-w-sm">
@@ -147,10 +161,10 @@ v-for="p in ['github', 'netlify', 'vercel', 'coding', 'gitee', 'sftp']" :key="St
         <div class="grid grid-cols-[180px_1fr] items-center gap-4">
           <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.port') }}</label>
           <div class="max-w-sm">
-            <Input v-model="form.port" type="number" placeholder="22" class="" />
+            <Input v-model="form.port" type="number" :placeholder="form.transferProtocol === 'ftp' ? '21' : '22'" class="" />
           </div>
         </div>
-        <div class="grid grid-cols-[180px_1fr] items-center gap-4">
+        <div v-if="form.transferProtocol !== 'ftp'" class="grid grid-cols-[180px_1fr] items-center gap-4">
           <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.connectType') }}</label>
           <div class="w-full max-w-sm">
             <Select :model-value="String(remoteType || '')" @update:model-value="(v) => remoteType = v">
@@ -170,7 +184,7 @@ v-for="p in ['github', 'netlify', 'vercel', 'coding', 'gitee', 'sftp']" :key="St
             <Input v-model="form.username" class="" />
           </div>
         </div>
-        <div v-if="remoteType === 'password'" class="grid grid-cols-[180px_1fr] items-center gap-4">
+        <div v-if="form.transferProtocol === 'ftp' || remoteType === 'password'" class="grid grid-cols-[180px_1fr] items-center gap-4">
           <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.password') }}</label>
           <div class="relative max-w-sm">
             <Input v-model="form.password" :type="passVisible ? 'text' : 'password'" class="pr-8" />
@@ -180,7 +194,7 @@ v-for="p in ['github', 'netlify', 'vercel', 'coding', 'gitee', 'sftp']" :key="St
               @click="passVisible = !passVisible" />
           </div>
         </div>
-        <div v-else class="grid grid-cols-[180px_1fr] items-center gap-4">
+        <div v-if="form.transferProtocol !== 'ftp' && remoteType === 'key'" class="grid grid-cols-[180px_1fr] items-center gap-4">
           <label class="text-sm font-medium text-right text-muted-foreground">{{ t('settings.network.privateKeyPath') }}</label>
           <div class="max-w-sm">
             <div class="flex gap-2">
@@ -281,6 +295,17 @@ const selectKeyFile = async () => {
   }
 }
 
+const handleProtocolChange = (v: string) => {
+  form.transferProtocol = v
+  // 切换协议时自动更新端口默认值
+  if (v === 'ftp') {
+    if (!form.port || form.port === '22') form.port = '21'
+    remoteType.value = 'password' // FTP 只支持密码
+  } else {
+    if (!form.port || form.port === '21') form.port = '22'
+  }
+}
+
 // 每个平台的专属字段（切换时独立保存/恢复）
 const platformFields: Record<string, string[]> = {
   github: ['domain', 'repository', 'branch', 'username', 'email', 'tokenUsername', 'token', 'cname'],
@@ -288,7 +313,7 @@ const platformFields: Record<string, string[]> = {
   coding: ['domain', 'repository', 'branch', 'username', 'email', 'tokenUsername', 'token', 'cname'],
   netlify: ['domain', 'netlifySiteId', 'netlifyAccessToken'],
   vercel: ['domain', 'repository', 'token', 'cname'],
-  sftp: ['domain', 'server', 'port', 'username', 'password', 'privateKey', 'remotePath'],
+  sftp: ['domain', 'transferProtocol', 'server', 'port', 'username', 'password', 'privateKey', 'remotePath'],
 }
 
 // 平台配置缓存
@@ -304,6 +329,7 @@ const form = reactive<ISettingForm>({
   tokenUsername: '',
   token: '',
   cname: '',
+  transferProtocol: 'sftp',
   port: '22',
   server: '',
   password: '',
@@ -341,8 +367,9 @@ const restorePlatformConfig = (platform: string) => {
   for (const field of allPlatformFields) {
     ;(form as any)[field] = ''
   }
-  // 恢复 SFTP 默认端口
+  // 恢复 SFTP/FTP 默认值
   if (platform === 'sftp') {
+    form.transferProtocol = 'sftp'
     form.port = '22'
   }
 
@@ -384,7 +411,7 @@ const getPlatformLabel = (p: string) => {
     vercel: 'Vercel',
     coding: 'Coding Pages',
     gitee: 'Gitee Pages',
-    sftp: 'SFTP'
+    sftp: 'SFTP / FTP'
   }
   return labels[p] || p
 }

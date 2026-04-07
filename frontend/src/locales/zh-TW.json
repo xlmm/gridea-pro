@@ -300,6 +300,7 @@
             "siteId": "Site ID",
             "accessToken": "Access Token",
             "port": "連接埠",
+            "transferProtocol": "傳輸協定",
             "server": "伺服器",
             "connectType": "連線方式",
             "password": "密碼",

@@ -300,6 +300,7 @@
             "siteId": "ID du site",
             "accessToken": "Jeton d'accès",
             "port": "Port",
+            "transferProtocol": "Protocole",
             "server": "Serveur",
             "connectType": "Type de connexion",
             "password": "Mot de passe",

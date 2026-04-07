@@ -111,7 +111,11 @@ func (s *DeployService) DeployToRemote(ctx context.Context) error {
 		}
 		provider = deploy.NewNetlifyProvider(proxyURL)
 	case "sftp":
-		provider = deploy.NewSftpProvider()
+		if setting.TransferProtocol() == "ftp" {
+			provider = deploy.NewFtpProvider()
+		} else {
+			provider = deploy.NewSftpProvider()
+		}
 	default:
 		provider = deploy.NewGitProvider()
 	}
