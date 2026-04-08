@@ -67,8 +67,14 @@
                             <Bars3Icon class="size-3 text-muted-foreground/50" />
                         </div>
                         <div class="py-3.5 flex-1 min-w-0">
-                            <div class="text-xs font-medium text-foreground">{{ child.name }}</div>
-                            <div class="text-[10px] text-muted-foreground truncate">{{ child.link }}</div>
+                            <div class="text-xs font-medium text-foreground mb-1">{{ child.name }}</div>
+                            <div class="flex items-center gap-2">
+                                <div class="px-1.5 py-0.5 bg-primary/10 border border-primary/20 rounded-full text-[10px] text-primary/80 flex items-center">
+                                    {{ child.openType }}
+                                    <ArrowTopRightOnSquareIcon v-if="child.openType === 'External'" class="w-3 h-3 ml-1" />
+                                </div>
+                                <div class="text-[10px] text-muted-foreground truncate">{{ child.link }}</div>
+                            </div>
                         </div>
                         <div class="flex items-center px-3 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
