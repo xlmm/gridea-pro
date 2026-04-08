@@ -8,29 +8,28 @@
         {{ else }}
         <span class="header-logo-text">{{ truncate 1 .ThemeConfig.SiteName }}</span>
         {{ end }}
+        <span class="header-site-name">{{ .ThemeConfig.SiteName }}</span>
       </a>
-      <a href="/" class="header-site-name">{{ .ThemeConfig.SiteName }}</a>
-    </div>
-
-    <nav class="header-nav" id="headerNav">
-      {{ range .Menus }}
-      {{ if .Children }}
-      <div class="header-nav-group">
-        <span class="header-nav-item">
-          {{ .Name }}
-          <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </span>
-        <div class="nav-dropdown">
-          {{ range .Children }}
-          <a class="nav-dropdown-item" href="{{ .Link }}"{{ if eq .OpenType "External" }} target="_blank" rel="noopener noreferrer"{{ end }}>{{ .Name }}</a>
-          {{ end }}
+      <nav class="header-nav" id="headerNav">
+        {{ range .Menus }}
+        {{ if .Children }}
+        <div class="header-nav-group">
+          <span class="header-nav-item">
+            {{ .Name }}
+            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </span>
+          <div class="nav-dropdown">
+            {{ range .Children }}
+            <a class="nav-dropdown-item" href="{{ .Link }}"{{ if eq .OpenType "External" }} target="_blank" rel="noopener noreferrer"{{ end }}>{{ .Name }}</a>
+            {{ end }}
+          </div>
         </div>
-      </div>
-      {{ else }}
-      <a class="header-nav-item" href="{{ .Link }}"{{ if eq .OpenType "External" }} target="_blank" rel="noopener noreferrer"{{ end }}>{{ .Name }}</a>
-      {{ end }}
-      {{ end }}
-    </nav>
+        {{ else }}
+        <a class="header-nav-item" href="{{ .Link }}"{{ if eq .OpenType "External" }} target="_blank" rel="noopener noreferrer"{{ end }}>{{ .Name }}</a>
+        {{ end }}
+        {{ end }}
+      </nav>
+    </div>
 
     <div class="header-right">
       <button class="theme-toggle" id="themeToggle" aria-label="切换主题">
@@ -62,20 +61,24 @@
 </nav>
 
 <script>
-(function() {
-  var toggle = document.getElementById('menuToggle');
-  var nav = document.getElementById('mobileNav');
-  if (!toggle || !nav) return;
+(function () {
+  var menuToggle = document.getElementById('menuToggle');
+  var mobileNav = document.getElementById('mobileNav');
+  if (!menuToggle || !mobileNav) return;
 
-  toggle.addEventListener('click', function() {
-    nav.classList.toggle('open');
-    document.body.style.overflow = nav.classList.contains('open') ? 'hidden' : '';
+  menuToggle.addEventListener('click', function () {
+    mobileNav.classList.toggle('open');
   });
 
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && nav.classList.contains('open')) {
-      nav.classList.remove('open');
-      document.body.style.overflow = '';
+  mobileNav.querySelectorAll('.mobile-nav-item').forEach(function (item) {
+    item.addEventListener('click', function () {
+      mobileNav.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && mobileNav.classList.contains('open')) {
+      mobileNav.classList.remove('open');
     }
   });
 })();
