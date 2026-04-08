@@ -13,17 +13,7 @@
       <nav class="header-nav" id="headerNav">
         {{ range .Menus }}
         {{ if .Children }}
-        <div class="header-nav-group">
-          <span class="header-nav-item">
-            {{ .Name }}
-            <svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-          </span>
-          <div class="nav-dropdown">
-            {{ range .Children }}
-            <a class="nav-dropdown-item" href="{{ .Link }}"{{ if eq .OpenType "External" }} target="_blank" rel="noopener noreferrer"{{ end }}>{{ .Name }}</a>
-            {{ end }}
-          </div>
-        </div>
+        <span class="header-nav-item has-subnav" data-subnav="{{ .Name }}">{{ .Name }}</span>
         {{ else }}
         <a class="header-nav-item" href="{{ .Link }}"{{ if eq .OpenType "External" }} target="_blank" rel="noopener noreferrer"{{ end }}>{{ .Name }}</a>
         {{ end }}
@@ -46,6 +36,22 @@
       </button>
     </div>
   </div>
+
+  {{/* Sub-nav bars — one per parent menu with children */}}
+  {{ range .Menus }}
+  {{ if .Children }}
+  <div class="header-subnav" data-subnav="{{ .Name }}">
+    <div class="header-subnav-inner container">
+      {{ $first := true }}
+      {{ range .Children }}
+      {{ if not $first }}<span class="header-subnav-sep"></span>{{ end }}
+      <a class="header-subnav-item" href="{{ .Link }}"{{ if eq .OpenType "External" }} target="_blank" rel="noopener noreferrer"{{ end }}>{{ .Name }}</a>
+      {{ $first = false }}
+      {{ end }}
+    </div>
+  </div>
+  {{ end }}
+  {{ end }}
 </header>
 
 <!-- Mobile Nav -->
@@ -62,24 +68,49 @@
 
 <script>
 (function () {
+  /* ── Mobile Nav ── */
   var menuToggle = document.getElementById('menuToggle');
   var mobileNav = document.getElementById('mobileNav');
-  if (!menuToggle || !mobileNav) return;
+  if (menuToggle && mobileNav) {
+    menuToggle.addEventListener('click', function () {
+      mobileNav.classList.toggle('open');
+    });
+    mobileNav.querySelectorAll('.mobile-nav-item').forEach(function (item) {
+      item.addEventListener('click', function () { mobileNav.classList.remove('open'); });
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') mobileNav.classList.remove('open');
+    });
+  }
 
-  menuToggle.addEventListener('click', function () {
-    mobileNav.classList.toggle('open');
-  });
+  /* ── Sub-nav hover ── */
+  var header = document.getElementById('siteHeader');
+  var subnavs = document.querySelectorAll('.header-subnav');
+  var hasSubnavItems = document.querySelectorAll('.has-subnav');
 
-  mobileNav.querySelectorAll('.mobile-nav-item').forEach(function (item) {
-    item.addEventListener('click', function () {
-      mobileNav.classList.remove('open');
+  function hideAllSubnavs() {
+    subnavs.forEach(function (s) { s.classList.remove('active'); });
+    hasSubnavItems.forEach(function (i) { i.classList.remove('active'); });
+  }
+
+  hasSubnavItems.forEach(function (item) {
+    var id = item.getAttribute('data-subnav');
+    item.addEventListener('mouseenter', function () {
+      hideAllSubnavs();
+      item.classList.add('active');
+      var subnav = document.querySelector('.header-subnav[data-subnav="' + id + '"]');
+      if (subnav) subnav.classList.add('active');
     });
   });
 
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && mobileNav.classList.contains('open')) {
-      mobileNav.classList.remove('open');
-    }
+  /* Hide subnav when leaving the header area */
+  if (header) {
+    header.addEventListener('mouseleave', hideAllSubnavs);
+  }
+
+  /* Regular nav items dismiss subnav */
+  document.querySelectorAll('.header-nav-item:not(.has-subnav)').forEach(function (item) {
+    item.addEventListener('mouseenter', hideAllSubnavs);
   });
 })();
 </script>
