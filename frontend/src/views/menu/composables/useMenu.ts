@@ -244,6 +244,15 @@ export function useMenu() {
         }
     }
 
+    const handleChildSort = async (_parentIndex: number) => {
+        try {
+            const menus = menuList.value.map(m => new domain.Menu(m))
+            await SaveMenus(menus)
+        } catch (e: any) {
+            toast.error(e.message || 'Error sorting submenu')
+        }
+    }
+
     onMounted(() => {
         menuList.value = [...siteStore.menus]
     })
@@ -267,6 +276,7 @@ export function useMenu() {
         confirmDeleteChild,
         handleDelete,
         handleMenuSort,
+        handleChildSort,
         handleNameChange,
         handleOpenTypeChange,
         handleLinkChange,

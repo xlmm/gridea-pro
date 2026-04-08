@@ -24,6 +24,7 @@
             @add-child="newSubMenu"
             @edit-child="editSubMenu"
             @delete-child="confirmDeleteChild"
+            @sort-children="handleChildSort"
           />
         </template>
       </draggable>
@@ -79,6 +80,7 @@ const {
   confirmDeleteChild,
   handleDelete,
   handleMenuSort,
+  handleChildSort,
   handleNameChange,
   handleOpenTypeChange,
   handleLinkChange,

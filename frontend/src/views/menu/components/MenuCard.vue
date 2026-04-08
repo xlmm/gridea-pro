@@ -51,32 +51,45 @@
             </div>
         </div>
 
-        <!-- 子菜单列表 -->
-        <div v-if="menu.children?.length && expanded" class="ml-5 mt-1 space-y-1">
-            <div v-for="(child, childIdx) in menu.children" :key="child.id || childIdx"
-                class="group flex items-center rounded-lg cursor-pointer transition-all duration-150 bg-primary/2 border border-primary/10 hover:border-primary/20 hover:bg-primary/5"
-                @click="$emit('edit-child', index, menu, childIdx, child)">
-                <div class="pl-3 pr-2 text-muted-foreground/40">
-                    <div class="w-2 h-px bg-current mt-0.5"></div>
-                </div>
-                <div class="py-2.5 flex-1 min-w-0">
-                    <div class="text-xs font-medium text-foreground">{{ child.name }}</div>
-                    <div class="text-[10px] text-muted-foreground truncate">{{ child.link }}</div>
-                </div>
-                <div class="flex items-center px-3 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                        class="p-1.5 text-muted-foreground hover:text-primary hover:bg-secondary rounded-lg transition-colors"
-                        :title="t('common.edit')"
-                        @click.stop="$emit('edit-child', index, menu, childIdx, child)">
-                        <PencilIcon class="size-3" />
-                    </button>
-                    <button
-                        class="p-1.5 text-muted-foreground hover:text-destructive hover:bg-secondary rounded-lg transition-colors"
-                        :title="t('common.delete')" @click.stop="$emit('delete-child', index, childIdx)">
-                        <TrashIcon class="size-3" />
-                    </button>
-                </div>
-            </div>
+        <!-- 子菜单列表（可拖拽排序） -->
+        <div v-if="menu.children?.length && expanded" class="ml-5 mt-1">
+            <draggable
+                v-model="menu.children"
+                handle=".child-handle"
+                item-key="id"
+                :animation="150"
+                @change="$emit('sort-children', index)">
+                <template #item="{ element: child, index: childIdx }">
+                    <div
+                        class="group flex items-center rounded-lg cursor-pointer transition-all duration-150 bg-primary/2 border border-primary/10 hover:border-primary/20 hover:bg-primary/5 mb-1"
+                        @click="$emit('edit-child', index, menu, childIdx, child)">
+                        <div class="flex items-center pl-3 child-handle cursor-move" @click.stop>
+                            <Bars3Icon class="size-3 text-muted-foreground/50" />
+                        </div>
+                        <div class="pl-2 pr-2 text-muted-foreground/30">
+                            <div class="w-2 h-px bg-current"></div>
+                        </div>
+                        <div class="py-2.5 flex-1 min-w-0">
+                            <div class="text-xs font-medium text-foreground">{{ child.name }}</div>
+                            <div class="text-[10px] text-muted-foreground truncate">{{ child.link }}</div>
+                        </div>
+                        <div class="flex items-center px-3 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                                class="p-1.5 text-muted-foreground hover:text-primary hover:bg-secondary rounded-lg transition-colors"
+                                :title="t('common.edit')"
+                                @click.stop="$emit('edit-child', index, menu, childIdx, child)">
+                                <PencilIcon class="size-3" />
+                            </button>
+                            <button
+                                class="p-1.5 text-muted-foreground hover:text-destructive hover:bg-secondary rounded-lg transition-colors"
+                                :title="t('common.delete')"
+                                @click.stop="$emit('delete-child', index, childIdx)">
+                                <TrashIcon class="size-3" />
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </draggable>
         </div>
     </div>
 </template>
@@ -84,6 +97,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Draggable from 'vuedraggable'
 import type { IMenu } from '@/interfaces/menu'
 import {
     Bars3Icon,
@@ -94,7 +108,7 @@ import {
     ChevronDownIcon,
 } from '@heroicons/vue/24/outline'
 
-const props = defineProps<{
+defineProps<{
     menu: IMenu
     index: number
 }>()
@@ -105,6 +119,7 @@ defineEmits<{
     (e: 'add-child', parentIndex: number): void
     (e: 'edit-child', parentIndex: number, parent: IMenu, childIndex: number, child: IMenu): void
     (e: 'delete-child', parentIndex: number, childIndex: number): void
+    (e: 'sort-children', parentIndex: number): void
 }>()
 
 const { t } = useI18n()
