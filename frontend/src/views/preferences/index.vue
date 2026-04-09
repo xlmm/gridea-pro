@@ -175,8 +175,10 @@ v-for="item in navItems" :key="item.key"
                       </Button>
                     </div>
                     <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer w-fit">
-                      <Checkbox :model-value="useCustomModelId"
-                        @update:model-value="(v: any) => onUseCustomModelToggle(!!v)" />
+                      <Checkbox :model-value="useCustomModelId" class="size-3"
+                        @update:model-value="(v: any) => onUseCustomModelToggle(!!v)">
+                        <Check class="size-2.5" />
+                      </Checkbox>
                       {{ t('settings.ai.useCustomModelId') }}
                     </label>
                   </div>
@@ -291,6 +293,7 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Check } from 'lucide-vue-next'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import {
   SwatchIcon,
