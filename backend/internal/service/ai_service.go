@@ -1,34 +1,19 @@
 package service
 
 import (
-	"bytes"
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"gridea-pro/backend/internal/domain"
+	"gridea-pro/backend/internal/service/ai"
 )
 
-// builtInZhipuAPIKeyEncrypted 内置 Zhipu API Key 的 AES-GCM 密文（Base64 编码）
-// 加密方式：EncryptKey(plainKey) — 详见下方函数
-// 暂未配置内置 Key，用户需在偏好设置 → AI 配置 中填写自己的 Key
-const builtInZhipuAPIKeyEncrypted = "XdSkHxsdio1XcIq3Fggd5yKNW7XWhSB2X4s0XYcKZSTuQal3JSmEODaeFAhch49hMmuC8Tf9gAOmmN4VihzANkzYWTYMR859evS5UeY="
-
-const zhipuEndpoint = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-const defaultAIModel = "glm-4-flash"
-
-// 内置 Key 调用频率限制（仅对使用内置免费 Key 的用户生效）
+// 内置 Key 调用频率限制（仅对使用内置免费模型的用户生效）
 const (
 	builtInDailyLimit  = 20 // 每天最多 20 次
 	builtInMinuteLimit = 5  // 每分钟最多 5 次
@@ -57,72 +42,35 @@ func (s *AIService) httpClient(ctx context.Context) *http.Client {
 	return &http.Client{Timeout: 30 * time.Second}
 }
 
-// deriveEncryptKey 从 App 名称派生加密密钥（16 字节 AES-128）
-func deriveEncryptKey() []byte {
-	h := sha256.Sum256([]byte("Gridea Pro"))
-	return h[:16]
-}
+// resolveProvider 根据当前 AI 设置返回 (provider, model, apiKey, isBuiltIn, error)
+func (s *AIService) resolveProvider(ctx context.Context) (ai.Provider, string, string, bool, error) {
+	setting, _ := s.repo.GetAISetting(ctx)
 
-// EncryptKey 将明文 API Key 加密为 Base64 密文
-// 供开发者配置内置 Key 时使用：将输出值填入 builtInZhipuAPIKeyEncrypted 常量
-func EncryptKey(plainKey string) (string, error) {
-	key := deriveEncryptKey()
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
+	// 默认使用内置模型
+	if setting.Mode == "" || setting.Mode == domain.AIModeBuiltIn {
+		key := ai.DecryptBuiltInKey()
+		if key == "" {
+			return nil, "", "", true, errors.New("内置模型暂不可用")
+		}
+		return ai.NewBuiltInProvider(), ai.PickBuiltInModel(), key, true, nil
 	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", err
-	}
-	ciphertext := gcm.Seal(nonce, nonce, []byte(plainKey), nil)
-	return base64.StdEncoding.EncodeToString(ciphertext), nil
-}
 
-// decryptBuiltInKey 解密内置 Key，失败或未配置则返回空字符串
-func decryptBuiltInKey() string {
-	if builtInZhipuAPIKeyEncrypted == "" {
-		return ""
+	// 自定义模式
+	cfg := setting.Custom
+	if strings.TrimSpace(cfg.Provider) == "" {
+		return nil, "", "", false, errors.New("请先在「偏好设置 → AI 配置」中选择模型厂商")
 	}
-	data, err := base64.StdEncoding.DecodeString(builtInZhipuAPIKeyEncrypted)
+	if strings.TrimSpace(cfg.APIKey) == "" {
+		return nil, "", "", false, errors.New("请先在「偏好设置 → AI 配置」中填写 API Key")
+	}
+	if strings.TrimSpace(cfg.Model) == "" {
+		return nil, "", "", false, errors.New("请先在「偏好设置 → AI 配置」中选择模型")
+	}
+	provider, _, err := ai.NewProvider(cfg.Provider)
 	if err != nil {
-		return ""
+		return nil, "", "", false, err
 	}
-	key := deriveEncryptKey()
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return ""
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return ""
-	}
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return ""
-	}
-	plaintext, err := gcm.Open(nil, data[:nonceSize], data[nonceSize:], nil)
-	if err != nil {
-		return ""
-	}
-	return string(plaintext)
-}
-
-// getAPIKey 优先使用用户自己的 Key，否则用内置 Key
-// 返回值：apiKey, isBuiltIn（是否使用内置 Key）, error
-func (s *AIService) getAPIKey(ctx context.Context) (string, bool, error) {
-	setting, err := s.repo.GetAISetting(ctx)
-	if err == nil && strings.TrimSpace(setting.ZhipuAPIKey) != "" {
-		return strings.TrimSpace(setting.ZhipuAPIKey), false, nil
-	}
-	if builtIn := decryptBuiltInKey(); builtIn != "" {
-		return builtIn, true, nil
-	}
-	return "", false, errors.New("请在「偏好设置 → AI 配置」中设置 Zhipu API Key")
+	return provider, strings.TrimSpace(cfg.Model), strings.TrimSpace(cfg.APIKey), false, nil
 }
 
 // checkBuiltInQuota 检查内置 Key 的调用配额（不增加计数）
@@ -146,7 +94,7 @@ func (s *AIService) checkBuiltInQuota(ctx context.Context) error {
 	}
 
 	if dailyCount >= builtInDailyLimit {
-		return fmt.Errorf("[DAILY_LIMIT] 今日免费额度已用完（%d 次/天），请明日再试，或在「偏好设置 → AI 配置」中填入您自己的 API Key", builtInDailyLimit)
+		return fmt.Errorf("[DAILY_LIMIT] 今日免费额度已用完（%d 次/天），请明日再试，或在「偏好设置 → AI 配置」中切换为自定义模型", builtInDailyLimit)
 	}
 	if minuteCount >= builtInMinuteLimit {
 		return fmt.Errorf("[RATE_LIMIT] 调用过于频繁，请稍后再试（限制 %d 次/分钟）", builtInMinuteLimit)
@@ -177,58 +125,9 @@ func (s *AIService) recordBuiltInUsage(ctx context.Context) {
 	_ = s.usageRepo.SaveAIUsage(ctx, usage)
 }
 
-// getModel 获取使用的模型，未配置则用默认值
-func (s *AIService) getModel(ctx context.Context) string {
-	setting, err := s.repo.GetAISetting(ctx)
-	if err == nil && strings.TrimSpace(setting.Model) != "" {
-		return strings.TrimSpace(setting.Model)
-	}
-	return defaultAIModel
-}
-
-// chatRequest OpenAI 兼容的请求结构
-type chatRequest struct {
-	Model       string        `json:"model"`
-	Messages    []chatMessage `json:"messages"`
-	Temperature float64       `json:"temperature"`
-	MaxTokens   int           `json:"max_tokens"`
-}
-
-type chatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-type chatResponse struct {
-	Choices []struct {
-		Message struct {
-			Content string `json:"content"`
-		} `json:"message"`
-	} `json:"choices"`
-	Error *struct {
-		Message string `json:"message"`
-	} `json:"error"`
-}
-
-// GenerateSlug 根据文章标题用 AI 生成 SEO 友好的英文 Slug
-func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, error) {
-	if strings.TrimSpace(title) == "" {
-		return "", errors.New("文章标题不能为空")
-	}
-
-	apiKey, isBuiltIn, err := s.getAPIKey(ctx)
-	if err != nil {
-		return "", err
-	}
-	// 仅对使用内置 Key 的用户做本地配额检查
-	if isBuiltIn {
-		if err := s.checkBuiltInQuota(ctx); err != nil {
-			return "", err
-		}
-	}
-	model := s.getModel(ctx)
-
-	prompt := fmt.Sprintf(
+// slugPrompt 构建生成 Slug 的提示词
+func slugPrompt(title string) string {
+	return fmt.Sprintf(
 		"Generate an SEO-friendly English URL slug from the blog title.\n\n"+
 			"Goal: Both search engines and human readers should immediately understand "+
 			"what the article is about just by looking at the slug. The slug must read "+
@@ -260,69 +159,105 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 			"Title: %s",
 		title,
 	)
+}
 
-	reqBody := chatRequest{
-		Model:       model,
-		Messages:    []chatMessage{{Role: "user", Content: prompt}},
-		Temperature: 0.1,
-		MaxTokens:   80,
-	}
-	bodyBytes, err := json.Marshal(reqBody)
-	if err != nil {
-		return "", fmt.Errorf("请求构建失败: %w", err)
-	}
-
-	client := s.httpClient(ctx)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, zhipuEndpoint, bytes.NewReader(bodyBytes))
-	if err != nil {
-		return "", fmt.Errorf("请求创建失败: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("请求失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("响应读取失败: %w", err)
-	}
-
-	// 上游 429（请求过于频繁）单独识别
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return "", errors.New("[UPSTREAM_429] 智谱 API 当前请求过于频繁，请稍后再试")
-	}
-
-	var chatResp chatResponse
-	if err := json.Unmarshal(respBytes, &chatResp); err != nil {
-		return "", fmt.Errorf("响应解析失败: %w", err)
-	}
-	if chatResp.Error != nil {
-		return "", fmt.Errorf("API 错误: %s", chatResp.Error.Message)
-	}
-	if len(chatResp.Choices) == 0 {
-		return "", errors.New("AI 未返回结果")
-	}
-
-	raw := strings.TrimSpace(chatResp.Choices[0].Message.Content)
-	// 清理：只保留字母、数字、连字符
+// sanitizeSlug 清理模型输出，只保留字母/数字/连字符
+func sanitizeSlug(raw string) string {
 	var b strings.Builder
-	for _, r := range strings.ToLower(raw) {
+	for _, r := range strings.ToLower(strings.TrimSpace(raw)) {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
 			b.WriteRune(r)
 		}
 	}
-	result := strings.Trim(b.String(), "-")
+	return strings.Trim(b.String(), "-")
+}
+
+// GenerateSlug 根据文章标题生成 SEO 友好的英文 Slug
+func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, error) {
+	if strings.TrimSpace(title) == "" {
+		return "", errors.New("文章标题不能为空")
+	}
+
+	provider, model, apiKey, isBuiltIn, err := s.resolveProvider(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// 仅对使用内置模型的用户做本地配额检查
+	if isBuiltIn {
+		if err := s.checkBuiltInQuota(ctx); err != nil {
+			return "", err
+		}
+	}
+
+	req := ai.ChatRequest{
+		Model:       model,
+		Prompt:      slugPrompt(title),
+		Temperature: 0.1,
+		MaxTokens:   80,
+	}
+	raw, err := provider.Chat(ctx, req, apiKey, s.httpClient(ctx))
+	if err != nil {
+		return "", err
+	}
+
+	result := sanitizeSlug(raw)
 	if result == "" {
 		return "", errors.New("生成的 Slug 无效，请重试")
 	}
 
-	// 调用成功后，记录内置 Key 使用次数
 	if isBuiltIn {
 		s.recordBuiltInUsage(ctx)
 	}
 	return result, nil
+}
+
+// TestConnection 测试自定义厂商的连接性（最小 chat 请求）
+func (s *AIService) TestConnection(ctx context.Context, providerID, model, apiKey string) error {
+	if strings.TrimSpace(providerID) == "" {
+		return errors.New("请选择模型厂商")
+	}
+	if strings.TrimSpace(apiKey) == "" {
+		return errors.New("请填写 API Key")
+	}
+	if strings.TrimSpace(model) == "" {
+		return errors.New("请选择模型")
+	}
+	provider, _, err := ai.NewProvider(providerID)
+	if err != nil {
+		return err
+	}
+	req := ai.ChatRequest{
+		Model:       strings.TrimSpace(model),
+		Prompt:      "hi",
+		Temperature: 0.0,
+		MaxTokens:   1,
+	}
+	_, err = provider.Chat(ctx, req, strings.TrimSpace(apiKey), s.httpClient(ctx))
+	return err
+}
+
+// ListProviderModels 拉取指定厂商的真实模型列表
+func (s *AIService) ListProviderModels(ctx context.Context, providerID, apiKey string) ([]string, error) {
+	if strings.TrimSpace(providerID) == "" {
+		return nil, errors.New("请选择模型厂商")
+	}
+	if strings.TrimSpace(apiKey) == "" {
+		return nil, errors.New("请先填写 API Key")
+	}
+	provider, _, err := ai.NewProvider(providerID)
+	if err != nil {
+		return nil, err
+	}
+	return provider.ListModels(ctx, strings.TrimSpace(apiKey), s.httpClient(ctx))
+}
+
+// GetProviderRegistry 返回所有自定义厂商的元信息（前端下拉框使用）
+func (s *AIService) GetProviderRegistry() []ai.ProviderInfo {
+	return ai.AllProviders()
+}
+
+// GetBuiltInModels 返回内置免费模型清单（前端展示用）
+func (s *AIService) GetBuiltInModels() []string {
+	return ai.BuiltInModels()
 }

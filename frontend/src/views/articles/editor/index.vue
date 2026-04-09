@@ -131,10 +131,6 @@ const handleGenerateSlug = async () => {
             toastMsg = t('settings.ai.rateLimited')
         } else if (msg.includes('[UPSTREAM_429]') || msg.includes('429')) {
             toastMsg = t('settings.ai.upstream429')
-        } else if (msg.includes('API Key')) {
-            toastMsg = t('settings.ai.noApiKey')
-        } else if (msg.includes('请求失败') || /network|timeout/i.test(msg)) {
-            toastMsg = t('settings.ai.networkError')
         }
         toast.error(toastMsg)
     } finally {

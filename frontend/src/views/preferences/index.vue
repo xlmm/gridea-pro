@@ -103,33 +103,113 @@ v-for="item in navItems" :key="item.key"
       <div v-if="activeTab === 'ai'" class="animate-fade-in">
         <h2 class="text-xl font-semibold mb-6 text-foreground">{{ t('settings.ai.title') }}</h2>
 
-        <div class="flex justify-between items-start py-4 border-b border-border">
-          <div class="flex-1">
-            <div class="text-sm font-medium text-foreground mb-1">{{ t('settings.ai.zhipuApiKey') }}</div>
-            <div class="text-xs text-muted-foreground">{{ t('settings.ai.zhipuApiKeyDesc') }}</div>
-          </div>
-          <div class="w-[260px]">
-            <Input v-model="aiForm.zhipuApiKey" type="password" placeholder="sk-..." />
-          </div>
-        </div>
+        <RadioGroup v-model="aiForm.mode" class="space-y-4">
+          <!-- 内置模型 -->
+          <label
+            class="flex items-start gap-3 p-4 rounded-lg border border-border cursor-pointer hover:border-primary/40 transition-colors"
+            :class="{ 'border-primary/60 bg-primary/5': aiForm.mode === 'builtin' }">
+            <RadioGroupItem value="builtin" class="mt-0.5" />
+            <div class="flex-1">
+              <div class="text-sm font-medium text-foreground">
+                {{ t('settings.ai.modeBuiltIn') }}
+                <span class="ml-2 text-xs text-muted-foreground">{{ t('settings.ai.modeBuiltInBadge') }}</span>
+              </div>
+              <div class="text-xs text-muted-foreground mt-1">
+                {{ t('settings.ai.modeBuiltInDesc') }}
+              </div>
+              <div v-if="builtInModels.length > 0" class="text-xs text-muted-foreground mt-1.5">
+                {{ t('settings.ai.builtInModelsLabel') }}
+                <code class="px-1 py-0.5 mx-0.5 rounded bg-muted text-foreground/80" v-for="m in builtInModels"
+                  :key="m">{{ m }}</code>
+              </div>
+              <div class="text-xs text-muted-foreground mt-1.5">
+                {{ t('settings.ai.builtInLimit', { daily: 20, minute: 5 }) }}
+              </div>
+            </div>
+          </label>
 
-        <div class="flex justify-between items-center py-4 border-b border-border">
-          <div class="flex-1">
-            <div class="text-sm font-medium text-foreground mb-1">{{ t('settings.ai.model') }}</div>
-          </div>
-          <div class="w-[260px]">
-            <Select v-model="aiForm.model">
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="glm-4-flash">glm-4-flash（免费）</SelectItem>
-                <SelectItem value="glm-4-flash-250414">glm-4-flash-250414（免费）</SelectItem>
-                <SelectItem value="glm-4-plus">glm-4-plus</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+          <!-- 自定义模型 -->
+          <label
+            class="flex items-start gap-3 p-4 rounded-lg border border-border cursor-pointer hover:border-primary/40 transition-colors"
+            :class="{ 'border-primary/60 bg-primary/5': aiForm.mode === 'custom' }">
+            <RadioGroupItem value="custom" class="mt-0.5" />
+            <div class="flex-1">
+              <div class="text-sm font-medium text-foreground">{{ t('settings.ai.modeCustom') }}</div>
+              <div class="text-xs text-muted-foreground mt-1">{{ t('settings.ai.modeCustomDesc') }}</div>
+
+              <!-- 自定义模型表单 -->
+              <div v-if="aiForm.mode === 'custom'" class="mt-4 space-y-4" @click.stop>
+                <!-- 厂商 -->
+                <div class="flex items-center gap-3">
+                  <Label class="w-20 text-xs shrink-0">{{ t('settings.ai.provider') }}</Label>
+                  <Select v-model="aiForm.custom.provider" @update:model-value="onProviderChange">
+                    <SelectTrigger class="flex-1">
+                      <SelectValue :placeholder="t('settings.ai.selectProvider')" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem v-for="p in providerRegistry" :key="p.id" :value="p.id">{{ p.name }}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <!-- 模型 -->
+                <div v-if="aiForm.custom.provider" class="flex items-start gap-3">
+                  <Label class="w-20 text-xs shrink-0 pt-2">{{ t('settings.ai.model') }}</Label>
+                  <div class="flex-1 space-y-2">
+                    <div class="flex items-center gap-2">
+                      <Select v-if="!useCustomModelId" v-model="aiForm.custom.model">
+                        <SelectTrigger class="flex-1">
+                          <SelectValue :placeholder="t('settings.ai.selectModel')" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem v-for="m in currentModelOptions" :key="m" :value="m">{{ m }}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input v-else v-model="customModelInput" class="flex-1"
+                        :placeholder="t('settings.ai.customModelPlaceholder')"
+                        @input="handleCustomModelInputChange" />
+                      <Button variant="outline" size="icon" type="button" class="size-9 shrink-0"
+                        :disabled="refreshingModels" :title="t('settings.ai.refreshModels')"
+                        @click="handleRefreshModels">
+                        <ArrowPathIcon class="size-4" :class="{ 'animate-spin': refreshingModels }" />
+                      </Button>
+                    </div>
+                    <label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer w-fit">
+                      <input type="checkbox" :checked="useCustomModelId" class="cursor-pointer"
+                        @change="(e: any) => onUseCustomModelToggle(e.target.checked)" />
+                      {{ t('settings.ai.useCustomModelId') }}
+                    </label>
+                  </div>
+                </div>
+
+                <!-- API Key -->
+                <div v-if="aiForm.custom.provider" class="flex items-start gap-3">
+                  <Label class="w-20 text-xs shrink-0 pt-2">{{ t('settings.ai.apiKey') }}</Label>
+                  <div class="flex-1 space-y-1.5">
+                    <Input v-model="aiForm.custom.apiKey" type="password" placeholder="sk-..." />
+                    <div v-if="currentProviderInfo?.apiKeyURL" class="text-xs">
+                      <a class="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer"
+                        @click.prevent="openApiKeyURL(currentProviderInfo!.apiKeyURL)">
+                        {{ t('settings.ai.getApiKey') }}
+                        <ArrowTopRightOnSquareIcon class="size-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 测试连接 -->
+                <div v-if="aiForm.custom.provider" class="flex items-center gap-3">
+                  <Label class="w-20 text-xs shrink-0">&nbsp;</Label>
+                  <Button variant="outline" type="button"
+                    class="h-8 px-4 text-xs rounded-full border-primary/30 text-primary hover:bg-primary/5 cursor-pointer"
+                    :disabled="testingConnection" @click="handleTestConnection">
+                    {{ testingConnection ? t('settings.ai.testing') : t('settings.ai.testConnection') }}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </label>
+        </RadioGroup>
 
         <div class="flex justify-end mt-6">
           <Button variant="default"
@@ -209,6 +289,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import {
   SwatchIcon,
@@ -221,11 +302,20 @@ import {
   TrashIcon,
   PencilIcon,
   SparklesIcon,
+  ArrowPathIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/vue/24/outline'
 import { EventsEmit, BrowserOpenURL } from '@/wailsjs/runtime'
 import { OpenFolderDialog, GetSites, AddSite, RemoveSite, UpdateSites, SwitchSite } from '@/wailsjs/go/app/App'
-import { GetAISetting, SaveAISettingFromFrontend } from '@/wailsjs/go/facade/AIFacade'
-import { domain } from '@/wailsjs/go/models'
+import {
+  GetAISetting,
+  SaveAISettingFromFrontend,
+  GetProviderRegistry,
+  GetBuiltInModels,
+  ListProviderModels,
+  TestConnection,
+} from '@/wailsjs/go/facade/AIFacade'
+import { domain, ai as aiNS } from '@/wailsjs/go/models'
 import { setI18nLanguage, type LocaleType } from '@/locales'
 
 interface SiteEntry {
@@ -273,19 +363,135 @@ const navItems = computed(() => [
   { key: 'about', icon: InformationCircleIcon, label: t('nav.about') },
 ])
 
-// AI 配置
-const aiForm = ref<domain.AISetting>(new domain.AISetting({ zhipuApiKey: '', model: 'glm-4-flash' }))
+// ─── AI 配置 ───────────────────────────────────────────
+const aiForm = ref<domain.AISetting>(
+  new domain.AISetting({
+    mode: 'builtin',
+    custom: { provider: '', model: '', apiKey: '' },
+  }),
+)
+const builtInModels = ref<string[]>([])
+const providerRegistry = ref<aiNS.ProviderInfo[]>([])
+const currentProviderInfo = computed<aiNS.ProviderInfo | undefined>(() =>
+  providerRegistry.value.find((p) => p.id === aiForm.value.custom.provider),
+)
+const currentModelOptions = ref<string[]>([]) // 当前选中厂商的模型列表（默认或刷新后的）
+const useCustomModelId = ref(false) // 是否手动输入模型 ID
+const customModelInput = ref('')
+const refreshingModels = ref(false)
+const testingConnection = ref(false)
 
 const loadAISetting = async () => {
   try {
-    const setting = await GetAISetting()
+    const [setting, models, registry] = await Promise.all([
+      GetAISetting(),
+      GetBuiltInModels(),
+      GetProviderRegistry(),
+    ])
+    builtInModels.value = models || []
+    providerRegistry.value = registry || []
     aiForm.value = new domain.AISetting({
-      zhipuApiKey: setting.zhipuApiKey || '',
-      model: setting.model || 'glm-4-flash',
+      mode: setting.mode || 'builtin',
+      custom: {
+        provider: setting.custom?.provider || '',
+        model: setting.custom?.model || '',
+        apiKey: setting.custom?.apiKey || '',
+      },
     })
+    // 同步默认模型列表
+    syncCurrentModelOptions()
+    // 如果当前 model 不在默认列表里，自动开启自定义模型 ID 模式
+    if (
+      aiForm.value.custom.model &&
+      currentModelOptions.value.length > 0 &&
+      !currentModelOptions.value.includes(aiForm.value.custom.model)
+    ) {
+      useCustomModelId.value = true
+      customModelInput.value = aiForm.value.custom.model
+    }
   } catch (e) {
     console.error('Failed to load AI setting:', e)
   }
+}
+
+const syncCurrentModelOptions = () => {
+  const info = currentProviderInfo.value
+  currentModelOptions.value = info ? [...info.defaultModels] : []
+}
+
+const onProviderChange = () => {
+  // 切换厂商时重置 model 与自定义输入
+  aiForm.value.custom.model = ''
+  useCustomModelId.value = false
+  customModelInput.value = ''
+  syncCurrentModelOptions()
+}
+
+const onUseCustomModelToggle = (val: boolean) => {
+  useCustomModelId.value = val
+  if (val) {
+    customModelInput.value = aiForm.value.custom.model || ''
+  } else {
+    // 切回下拉时如果当前值不在选项里，清空
+    if (!currentModelOptions.value.includes(aiForm.value.custom.model)) {
+      aiForm.value.custom.model = ''
+    }
+  }
+}
+
+const handleCustomModelInputChange = () => {
+  aiForm.value.custom.model = customModelInput.value.trim()
+}
+
+const handleRefreshModels = async () => {
+  if (!aiForm.value.custom.provider) {
+    toast.warning(t('settings.ai.selectProviderFirst'))
+    return
+  }
+  if (!aiForm.value.custom.apiKey) {
+    toast.warning(t('settings.ai.fillApiKeyFirst'))
+    return
+  }
+  refreshingModels.value = true
+  try {
+    const models = await ListProviderModels(aiForm.value.custom.provider, aiForm.value.custom.apiKey)
+    if (models && models.length > 0) {
+      currentModelOptions.value = models
+      toast.success(t('settings.ai.refreshSuccess'))
+    } else {
+      toast.warning(t('settings.ai.refreshEmpty'))
+    }
+  } catch (e: any) {
+    console.error('Refresh models failed:', e)
+    toast.error(t('settings.ai.refreshFailed'))
+  } finally {
+    refreshingModels.value = false
+  }
+}
+
+const handleTestConnection = async () => {
+  if (!aiForm.value.custom.provider || !aiForm.value.custom.model || !aiForm.value.custom.apiKey) {
+    toast.warning(t('settings.ai.testIncomplete'))
+    return
+  }
+  testingConnection.value = true
+  try {
+    await TestConnection(
+      aiForm.value.custom.provider,
+      aiForm.value.custom.model,
+      aiForm.value.custom.apiKey,
+    )
+    toast.success(t('settings.ai.testSuccess'))
+  } catch (e: any) {
+    console.error('Test connection failed:', e)
+    toast.error(t('settings.ai.testFailed'))
+  } finally {
+    testingConnection.value = false
+  }
+}
+
+const openApiKeyURL = (url: string) => {
+  if (url) BrowserOpenURL(url)
 }
 
 const saveAISetting = async () => {

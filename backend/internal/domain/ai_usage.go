@@ -9,6 +9,7 @@ type AIUsage struct {
 	DailyCount  int    `json:"dailyCount"`  // 当日已用次数
 	Minute      string `json:"minute"`      // YYYY-MM-DD HH:MM
 	MinuteCount int    `json:"minuteCount"` // 当前分钟已用次数
+	Sig         string `json:"sig"`         // HMAC-SHA256 签名，防止用户编辑文件直接重置
 }
 
 // AIUsageRepository 调用计数存储接口

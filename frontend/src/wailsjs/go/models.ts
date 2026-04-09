@@ -1,3 +1,30 @@
+export namespace ai {
+	
+	export class ProviderInfo {
+	    id: string;
+	    name: string;
+	    protocol: string;
+	    baseURL: string;
+	    defaultModels: string[];
+	    apiKeyURL: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProviderInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.protocol = source["protocol"];
+	        this.baseURL = source["baseURL"];
+	        this.defaultModels = source["defaultModels"];
+	        this.apiKeyURL = source["apiKeyURL"];
+	    }
+	}
+
+}
+
 export namespace config {
 	
 	export class SiteEntry {
@@ -21,9 +48,25 @@ export namespace config {
 
 export namespace domain {
 	
-	export class AISetting {
-	    zhipuApiKey: string;
+	export class AICustomConfig {
+	    provider: string;
 	    model: string;
+	    apiKey: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AICustomConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.provider = source["provider"];
+	        this.model = source["model"];
+	        this.apiKey = source["apiKey"];
+	    }
+	}
+	export class AISetting {
+	    mode: string;
+	    custom: AICustomConfig;
 	
 	    static createFrom(source: any = {}) {
 	        return new AISetting(source);
@@ -31,9 +74,27 @@ export namespace domain {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.zhipuApiKey = source["zhipuApiKey"];
-	        this.model = source["model"];
+	        this.mode = source["mode"];
+	        this.custom = this.convertValues(source["custom"], AICustomConfig);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class Category {
 	    id: string;

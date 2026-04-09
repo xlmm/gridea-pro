@@ -10,6 +10,22 @@ export function GetAISetting() {
   return window['go']['facade']['AIFacade']['GetAISetting']();
 }
 
+export function GetBuiltInModels() {
+  return window['go']['facade']['AIFacade']['GetBuiltInModels']();
+}
+
+export function GetProviderRegistry() {
+  return window['go']['facade']['AIFacade']['GetProviderRegistry']();
+}
+
+export function ListProviderModels(arg1, arg2) {
+  return window['go']['facade']['AIFacade']['ListProviderModels'](arg1, arg2);
+}
+
 export function SaveAISettingFromFrontend(arg1) {
   return window['go']['facade']['AIFacade']['SaveAISettingFromFrontend'](arg1);
+}
+
+export function TestConnection(arg1, arg2, arg3) {
+  return window['go']['facade']['AIFacade']['TestConnection'](arg1, arg2, arg3);
 }
