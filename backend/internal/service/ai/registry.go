@@ -21,7 +21,13 @@ type ProviderInfo struct {
 
 // providerRegistry 13 家自定义厂商的注册表
 // 顺序即前端下拉框展示顺序
+//
+// 排序原则：
+//  1. 国际主流（OpenAI / Anthropic / Google / xAI）—— 用户认知度最高
+//  2. 国内主流（DeepSeek / 智谱 / Kimi / 通义 / 豆包 / 小米）—— 中国用户无需代理
+//  3. 特殊用途（OpenRouter 聚合 / Mistral 欧洲 / Groq 速度特化）—— 进阶选项
 var providerRegistry = []ProviderInfo{
+	// ─── 国际主流 ──────────────────────────────────────
 	{
 		ID:       "openai",
 		Name:     "OpenAI",
@@ -37,7 +43,7 @@ var providerRegistry = []ProviderInfo{
 	},
 	{
 		ID:       "anthropic",
-		Name:     "Anthropic",
+		Name:     "Anthropic Claude",
 		Protocol: ProtocolAnthropic,
 		BaseURL:  "https://api.anthropic.com",
 		DefaultModels: []string{
@@ -61,7 +67,7 @@ var providerRegistry = []ProviderInfo{
 	},
 	{
 		ID:       "xai",
-		Name:     "xAI (Grok)",
+		Name:     "xAI Grok",
 		Protocol: ProtocolOpenAI,
 		BaseURL:  "https://api.x.ai/v1",
 		DefaultModels: []string{
@@ -71,21 +77,10 @@ var providerRegistry = []ProviderInfo{
 		},
 		APIKeyURL: "https://console.x.ai",
 	},
-	{
-		ID:       "openrouter",
-		Name:     "OpenRouter",
-		Protocol: ProtocolOpenAI,
-		BaseURL:  "https://openrouter.ai/api/v1",
-		DefaultModels: []string{
-			"anthropic/claude-3.5-sonnet",
-			"openai/gpt-4o",
-			"google/gemini-2.0-flash-exp",
-		},
-		APIKeyURL: "https://openrouter.ai/keys",
-	},
+	// ─── 国内主流 ──────────────────────────────────────
 	{
 		ID:       "deepseek",
-		Name:     "DeepSeek",
+		Name:     "DeepSeek 深度求索",
 		Protocol: ProtocolOpenAI,
 		BaseURL:  "https://api.deepseek.com/v1",
 		DefaultModels: []string{
@@ -95,8 +90,21 @@ var providerRegistry = []ProviderInfo{
 		APIKeyURL: "https://platform.deepseek.com/api_keys",
 	},
 	{
+		ID:       "glm",
+		Name:     "智谱 GLM",
+		Protocol: ProtocolOpenAI,
+		BaseURL:  "https://open.bigmodel.cn/api/paas/v4",
+		DefaultModels: []string{
+			"glm-4-plus",
+			"glm-4-air",
+			"glm-4-airx",
+			"glm-4-long",
+		},
+		APIKeyURL: "https://open.bigmodel.cn/usercenter/apikeys",
+	},
+	{
 		ID:       "kimi",
-		Name:     "Kimi (Moonshot)",
+		Name:     "月之暗面 Kimi",
 		Protocol: ProtocolOpenAI,
 		BaseURL:  "https://api.moonshot.cn/v1",
 		DefaultModels: []string{
@@ -105,6 +113,29 @@ var providerRegistry = []ProviderInfo{
 			"moonshot-v1-128k",
 		},
 		APIKeyURL: "https://platform.moonshot.cn/console/api-keys",
+	},
+	{
+		ID:       "qwen",
+		Name:     "阿里通义千问",
+		Protocol: ProtocolOpenAI,
+		BaseURL:  "https://dashscope.aliyuncs.com/compatible-mode/v1",
+		DefaultModels: []string{
+			"qwen-max",
+			"qwen-plus",
+			"qwen-turbo",
+		},
+		APIKeyURL: "https://dashscope.console.aliyun.com/apiKey",
+	},
+	{
+		ID:       "doubao",
+		Name:     "字节豆包",
+		Protocol: ProtocolOpenAI,
+		BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
+		DefaultModels: []string{
+			"doubao-pro-32k",
+			"doubao-lite-32k",
+		},
+		APIKeyURL: "https://console.volcengine.com/ark",
 	},
 	{
 		ID:       "xiaomi",
@@ -117,18 +148,18 @@ var providerRegistry = []ProviderInfo{
 		},
 		APIKeyURL: "https://api.xiaomimimo.com",
 	},
+	// ─── 特殊用途 ──────────────────────────────────────
 	{
-		ID:       "glm",
-		Name:     "GLM (智谱)",
+		ID:       "openrouter",
+		Name:     "OpenRouter",
 		Protocol: ProtocolOpenAI,
-		BaseURL:  "https://open.bigmodel.cn/api/paas/v4",
+		BaseURL:  "https://openrouter.ai/api/v1",
 		DefaultModels: []string{
-			"glm-4-plus",
-			"glm-4-air",
-			"glm-4-airx",
-			"glm-4-long",
+			"anthropic/claude-3.5-sonnet",
+			"openai/gpt-4o",
+			"google/gemini-2.0-flash-exp",
 		},
-		APIKeyURL: "https://open.bigmodel.cn/usercenter/apikeys",
+		APIKeyURL: "https://openrouter.ai/keys",
 	},
 	{
 		ID:       "mistral",
@@ -153,29 +184,6 @@ var providerRegistry = []ProviderInfo{
 			"mixtral-8x7b-32768",
 		},
 		APIKeyURL: "https://console.groq.com/keys",
-	},
-	{
-		ID:       "doubao",
-		Name:     "豆包 (字节)",
-		Protocol: ProtocolOpenAI,
-		BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
-		DefaultModels: []string{
-			"doubao-pro-32k",
-			"doubao-lite-32k",
-		},
-		APIKeyURL: "https://console.volcengine.com/ark",
-	},
-	{
-		ID:       "qwen",
-		Name:     "通义千问 (阿里)",
-		Protocol: ProtocolOpenAI,
-		BaseURL:  "https://dashscope.aliyuncs.com/compatible-mode/v1",
-		DefaultModels: []string{
-			"qwen-max",
-			"qwen-plus",
-			"qwen-turbo",
-		},
-		APIKeyURL: "https://dashscope.console.aliyun.com/apiKey",
 	},
 }
 
