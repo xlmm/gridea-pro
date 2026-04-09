@@ -171,7 +171,8 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 			"Examples:\n"+
 			"- 我用 Claude Code 重构了整个项目的代码 → refactoring-codebase-with-claude-code\n"+
 			"- Arc 和 Chrome 哪个更适合开发者日常使用？ → arc-vs-chrome-for-developers\n"+
-			"- 独立开发者出海第一步：选对收款工具 → indie-developer-global-payment-tools-guide\n\n"+
+			"- 独立开发者出海第一步：选对收款工具 → indie-developer-global-payment-tools-guide\n"+
+			"- The Best Markdown Editors for Developers in 2025 → best-markdown-editors-for-developers-2025\n\n"+
 			"Output ONLY the slug string.\n\n"+
 			"Title: %s",
 		title,
