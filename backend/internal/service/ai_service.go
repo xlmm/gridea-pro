@@ -45,7 +45,7 @@ func (s *AIService) httpClient(ctx context.Context) *http.Client {
 			return newHTTPClient(setting.ProxyURL)
 		}
 	}
-	return &http.Client{Timeout: 15 * time.Second}
+	return &http.Client{Timeout: 30 * time.Second}
 }
 
 // deriveEncryptKey 从 App 名称派生加密密钥（16 字节 AES-128）
