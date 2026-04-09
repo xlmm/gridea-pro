@@ -29,11 +29,23 @@ const defaultAIModel = "glm-4-flash"
 
 // AIService AI 功能服务
 type AIService struct {
-	repo domain.AISettingRepository
+	repo        domain.AISettingRepository
+	settingRepo domain.SettingRepository
 }
 
-func NewAIService(repo domain.AISettingRepository) *AIService {
-	return &AIService{repo: repo}
+func NewAIService(repo domain.AISettingRepository, settingRepo domain.SettingRepository) *AIService {
+	return &AIService{repo: repo, settingRepo: settingRepo}
+}
+
+// httpClient 根据当前代理配置返回合适的 HTTP client
+func (s *AIService) httpClient(ctx context.Context) *http.Client {
+	if s.settingRepo != nil {
+		setting, err := s.settingRepo.GetSetting(ctx)
+		if err == nil && setting.ProxyEnabled && setting.ProxyURL != "" {
+			return newHTTPClient(setting.ProxyURL)
+		}
+	}
+	return &http.Client{Timeout: 15 * time.Second}
 }
 
 // deriveEncryptKey 从 App 名称派生加密密钥（16 字节 AES-128）
@@ -166,7 +178,7 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 		return "", fmt.Errorf("请求构建失败: %w", err)
 	}
 
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := s.httpClient(ctx)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, zhipuEndpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return "", fmt.Errorf("请求创建失败: %w", err)

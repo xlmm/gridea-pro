@@ -115,7 +115,7 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 	cdnUploadService := service.NewCdnUploadService(cdnSettingRepo, settingRepo, appDir)
 	deployService.SetCdnUploadService(cdnUploadService)
 	deployService.SetRenderer(rendererService)
-	aiService := service.NewAIService(aiSettingRepo)
+	aiService := service.NewAIService(aiSettingRepo, settingRepo)
 
 	// 3. Wrap with Facades
 	return &AppServices{
