@@ -161,18 +161,21 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 	model := s.getModel(ctx)
 
 	prompt := fmt.Sprintf(
-		"Convert the blog title into a natural English URL slug.\n\n"+
+		"Convert the blog title into a concise SEO-friendly English URL slug.\n\n"+
 			"Rules:\n"+
-			"- Keep logical connectors: and, vs, for, to, with, on\n"+
-			"- Remove fillers: a, an, the, that, of\n"+
-			"- Keep brand/tech names precise (e.g. WeChat, macOS, Docker)\n"+
-			"- Retain numbers only if part of a version or year (e.g. gpt-4, 2025)\n"+
+			"- 3–5 words maximum (hard limit — shorter is better)\n"+
+			"- Keep only the core topic keywords\n"+
+			"- Remove ALL stop words: a, an, the, of, for, to, with, on, in, is, are, that, how\n"+
+			"- Keep 'vs' only when comparing two things\n"+
+			"- Brand/tech names must be exact (e.g. macOS, Docker, GPT-4, WeChat)\n"+
+			"- Numbers only for versions or years (e.g. gpt-4, 2025)\n"+
 			"- All lowercase, hyphens as separators, no special characters\n\n"+
 			"Examples:\n"+
-			"- 我用 Claude Code 重构了整个项目的代码 → refactoring-codebase-with-claude-code\n"+
-			"- Arc 和 Chrome 哪个更适合开发者日常使用？ → arc-vs-chrome-for-developers\n"+
-			"- 独立开发者出海第一步：选对收款工具 → indie-developer-global-payment-tools-guide\n"+
-			"- The Best Markdown Editors for Developers in 2025 → best-markdown-editors-for-developers-2025\n\n"+
+			"- 我用 Claude Code 重构了整个项目的代码 → codebase-refactor-claude-code\n"+
+			"- Arc 和 Chrome 哪个更适合开发者日常使用？ → arc-vs-chrome-developers\n"+
+			"- 独立开发者出海第一步：选对收款工具 → indie-dev-payment-tools\n"+
+			"- The Best Markdown Editors for Developers in 2026 → best-markdown-editors-2026\n"+
+			"- 如何用 Docker 部署 Next.js 到生产环境 → docker-nextjs-production-deploy\n\n"+
 			"Output ONLY the slug string.\n\n"+
 			"Title: %s",
 		title,
@@ -182,7 +185,7 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 		Model:       model,
 		Messages:    []chatMessage{{Role: "user", Content: prompt}},
 		Temperature: 0.1,
-		MaxTokens:   80,
+		MaxTokens:   50,
 	}
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {
