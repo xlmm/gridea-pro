@@ -161,8 +161,19 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 	model := s.getModel(ctx)
 
 	prompt := fmt.Sprintf(
-		"Generate a SEO-friendly English URL slug for this article title.\n"+
-			"Rules: lowercase letters and numbers only, words separated by hyphens, 3 to 6 words, no explanation, return ONLY the slug.\n"+
+		"Convert the Chinese blog title into a natural English URL slug.\n\n"+
+			"Rules:\n"+
+			"- Keep logical connectors: and, vs, for, to, with, on\n"+
+			"- Remove fillers: a, an, the, that, of\n"+
+			"- Keep brand/tech names precise (e.g. WeChat, macOS, Docker)\n"+
+			"- Retain numbers only if part of a version or year (e.g. gpt-4, 2025)\n"+
+			"- All lowercase, hyphens as separators, no special characters\n\n"+
+			"Examples:\n"+
+			"- 国行 Mac 无损开启 Apple Intelligence 和 ChatGPT → enable-apple-intelligence-and-chatgpt-for-china-mac\n"+
+			"- DeepSeek 和 ChatGPT 哪个更好用？ → deepseek-vs-chatgpt-comparison\n"+
+			"- 地球上和 Claude 对话最多的人，是一位哲学家 → claude-ai-top-user-philosopher-story\n"+
+			"- 2025年独立开发者的出海指南 → indie-developer-global-growth-guide-2025\n\n"+
+			"Output ONLY the slug string.\n\n"+
 			"Title: %s",
 		title,
 	)
@@ -171,7 +182,7 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 		Model:       model,
 		Messages:    []chatMessage{{Role: "user", Content: prompt}},
 		Temperature: 0.1,
-		MaxTokens:   50,
+		MaxTokens:   80,
 	}
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {
