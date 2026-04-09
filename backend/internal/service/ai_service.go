@@ -161,7 +161,7 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 	model := s.getModel(ctx)
 
 	prompt := fmt.Sprintf(
-		"Convert the Chinese blog title into a natural English URL slug.\n\n"+
+		"Convert the blog title into a natural English URL slug.\n\n"+
 			"Rules:\n"+
 			"- Keep logical connectors: and, vs, for, to, with, on\n"+
 			"- Remove fillers: a, an, the, that, of\n"+
