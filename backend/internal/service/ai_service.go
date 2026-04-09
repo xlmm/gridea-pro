@@ -161,22 +161,24 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 	model := s.getModel(ctx)
 
 	prompt := fmt.Sprintf(
-		"Convert the blog title into a concise SEO-friendly English URL slug.\n\n"+
+		"Generate an SEO-friendly English URL slug from the blog title.\n\n"+
+			"Goal: Both search engines and human readers should immediately understand "+
+			"what the article is about just by looking at the slug.\n\n"+
 			"Rules:\n"+
-			"- 3–5 words maximum (hard limit — shorter is better)\n"+
-			"- Keep only the core topic keywords\n"+
-			"- Remove ALL stop words: a, an, the, of, for, to, with, on, in, is, are, that, how\n"+
-			"- Keep 'vs' only when comparing two things\n"+
-			"- Brand/tech names must be exact (e.g. macOS, Docker, GPT-4, WeChat)\n"+
-			"- Numbers only for versions or years (e.g. gpt-4, 2025)\n"+
-			"- All lowercase, hyphens as separators, no special characters\n\n"+
+			"- 4–8 words (aim for 5–6); capture the article's core topic and intent, not just isolated keywords\n"+
+			"- Preserve the meaningful subject, action, and context — drop only filler words (a, an, the, is, are, that, how, what)\n"+
+			"- Keep short logical connectors when they aid clarity: vs, with, for, to, in\n"+
+			"- Brand/tech names must be exact and lowercased (e.g. macos, docker, nextjs, gpt-4, wechat, claude-code)\n"+
+			"- Keep version numbers and years when present (e.g. gpt-4, 2026)\n"+
+			"- All lowercase, hyphens as separators, no special characters, no trailing hyphen\n\n"+
 			"Examples:\n"+
-			"- 我用 Claude Code 重构了整个项目的代码 → codebase-refactor-claude-code\n"+
-			"- Arc 和 Chrome 哪个更适合开发者日常使用？ → arc-vs-chrome-developers\n"+
-			"- 独立开发者出海第一步：选对收款工具 → indie-dev-payment-tools\n"+
-			"- The Best Markdown Editors for Developers in 2026 → best-markdown-editors-2026\n"+
-			"- 如何用 Docker 部署 Next.js 到生产环境 → docker-nextjs-production-deploy\n\n"+
-			"Output ONLY the slug string.\n\n"+
+			"- 我用 Claude Code 重构了整个项目的代码 → refactor-entire-project-with-claude-code\n"+
+			"- Arc 和 Chrome 哪个更适合开发者日常使用？ → arc-vs-chrome-for-developers\n"+
+			"- 独立开发者出海第一步：选对收款工具 → indie-developer-global-payment-tools\n"+
+			"- The Best Markdown Editors for Developers in 2026 → best-markdown-editors-for-developers-2026\n"+
+			"- 如何用 Docker 部署 Next.js 到生产环境 → deploy-nextjs-to-production-with-docker\n"+
+			"- 从零搭建一个个人博客系统 → build-personal-blog-system-from-scratch\n\n"+
+			"Output ONLY the slug string, nothing else.\n\n"+
 			"Title: %s",
 		title,
 	)
@@ -185,7 +187,7 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 		Model:       model,
 		Messages:    []chatMessage{{Role: "user", Content: prompt}},
 		Temperature: 0.1,
-		MaxTokens:   50,
+		MaxTokens:   80,
 	}
 	bodyBytes, err := json.Marshal(reqBody)
 	if err != nil {
