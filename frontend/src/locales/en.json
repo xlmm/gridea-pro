@@ -300,6 +300,9 @@
             "generateFailed": "Failed to generate slug, please try again",
             "noApiKey": "Please set your Zhipu API Key in Preferences → AI Settings first",
             "networkError": "Network request failed, please check your network or proxy settings",
+            "dailyLimitReached": "Daily free quota reached (20/day). Please try again tomorrow, or set your own API Key in Preferences → AI Settings",
+            "rateLimited": "Too many requests, please slow down (limit: 5/minute)",
+            "upstream429": "AI service is busy, please try again later",
             "noTitle": "Please enter the article title first"
         },
         "network": {

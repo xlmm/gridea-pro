@@ -300,6 +300,9 @@
             "generateFailed": "Slug 生成失敗，請重試",
             "noApiKey": "請先在「偏好設定 → AI 設定」中設定 Zhipu API Key",
             "networkError": "網路請求失敗，請檢查網路或代理設定",
+            "dailyLimitReached": "今日免費額度已用完（20 次/天），請明日再試，或在「偏好設定 → AI 設定」中填入您自己的 API Key",
+            "rateLimited": "呼叫過於頻繁，請稍後再試（限制 5 次/分鐘）",
+            "upstream429": "AI 服務繁忙，請稍後再試",
             "noTitle": "請先填寫文章標題"
         },
         "network": {

@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"gridea-pro/backend/internal/domain"
@@ -27,14 +28,22 @@ const builtInZhipuAPIKeyEncrypted = "XdSkHxsdio1XcIq3Fggd5yKNW7XWhSB2X4s0XYcKZST
 const zhipuEndpoint = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 const defaultAIModel = "glm-4-flash"
 
+// 内置 Key 调用频率限制（仅对使用内置免费 Key 的用户生效）
+const (
+	builtInDailyLimit  = 20 // 每天最多 20 次
+	builtInMinuteLimit = 5  // 每分钟最多 5 次
+)
+
 // AIService AI 功能服务
 type AIService struct {
 	repo        domain.AISettingRepository
 	settingRepo domain.SettingRepository
+	usageRepo   domain.AIUsageRepository
+	usageMu     sync.Mutex
 }
 
-func NewAIService(repo domain.AISettingRepository, settingRepo domain.SettingRepository) *AIService {
-	return &AIService{repo: repo, settingRepo: settingRepo}
+func NewAIService(repo domain.AISettingRepository, settingRepo domain.SettingRepository, usageRepo domain.AIUsageRepository) *AIService {
+	return &AIService{repo: repo, settingRepo: settingRepo, usageRepo: usageRepo}
 }
 
 // httpClient 根据当前代理配置返回合适的 HTTP client
@@ -104,15 +113,68 @@ func decryptBuiltInKey() string {
 }
 
 // getAPIKey 优先使用用户自己的 Key，否则用内置 Key
-func (s *AIService) getAPIKey(ctx context.Context) (string, error) {
+// 返回值：apiKey, isBuiltIn（是否使用内置 Key）, error
+func (s *AIService) getAPIKey(ctx context.Context) (string, bool, error) {
 	setting, err := s.repo.GetAISetting(ctx)
 	if err == nil && strings.TrimSpace(setting.ZhipuAPIKey) != "" {
-		return strings.TrimSpace(setting.ZhipuAPIKey), nil
+		return strings.TrimSpace(setting.ZhipuAPIKey), false, nil
 	}
 	if builtIn := decryptBuiltInKey(); builtIn != "" {
-		return builtIn, nil
+		return builtIn, true, nil
 	}
-	return "", errors.New("请在「偏好设置 → AI 配置」中设置 Zhipu API Key")
+	return "", false, errors.New("请在「偏好设置 → AI 配置」中设置 Zhipu API Key")
+}
+
+// checkBuiltInQuota 检查内置 Key 的调用配额（不增加计数）
+// 错误信息使用 [DAILY_LIMIT] / [RATE_LIMIT] 前缀，供前端 i18n 匹配
+func (s *AIService) checkBuiltInQuota(ctx context.Context) error {
+	s.usageMu.Lock()
+	defer s.usageMu.Unlock()
+
+	usage, _ := s.usageRepo.GetAIUsage(ctx)
+	now := time.Now()
+	today := now.Format("2006-01-02")
+	minute := now.Format("2006-01-02 15:04")
+
+	dailyCount := usage.DailyCount
+	if usage.Date != today {
+		dailyCount = 0
+	}
+	minuteCount := usage.MinuteCount
+	if usage.Minute != minute {
+		minuteCount = 0
+	}
+
+	if dailyCount >= builtInDailyLimit {
+		return fmt.Errorf("[DAILY_LIMIT] 今日免费额度已用完（%d 次/天），请明日再试，或在「偏好设置 → AI 配置」中填入您自己的 API Key", builtInDailyLimit)
+	}
+	if minuteCount >= builtInMinuteLimit {
+		return fmt.Errorf("[RATE_LIMIT] 调用过于频繁，请稍后再试（限制 %d 次/分钟）", builtInMinuteLimit)
+	}
+	return nil
+}
+
+// recordBuiltInUsage 在调用成功后增加内置 Key 计数
+func (s *AIService) recordBuiltInUsage(ctx context.Context) {
+	s.usageMu.Lock()
+	defer s.usageMu.Unlock()
+
+	usage, _ := s.usageRepo.GetAIUsage(ctx)
+	now := time.Now()
+	today := now.Format("2006-01-02")
+	minute := now.Format("2006-01-02 15:04")
+
+	if usage.Date != today {
+		usage.Date = today
+		usage.DailyCount = 0
+	}
+	if usage.Minute != minute {
+		usage.Minute = minute
+		usage.MinuteCount = 0
+	}
+	usage.DailyCount++
+	usage.MinuteCount++
+	_ = s.usageRepo.SaveAIUsage(ctx, usage)
 }
 
 // getModel 获取使用的模型，未配置则用默认值
@@ -154,9 +216,15 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 		return "", errors.New("文章标题不能为空")
 	}
 
-	apiKey, err := s.getAPIKey(ctx)
+	apiKey, isBuiltIn, err := s.getAPIKey(ctx)
 	if err != nil {
 		return "", err
+	}
+	// 仅对使用内置 Key 的用户做本地配额检查
+	if isBuiltIn {
+		if err := s.checkBuiltInQuota(ctx); err != nil {
+			return "", err
+		}
 	}
 	model := s.getModel(ctx)
 
@@ -223,6 +291,11 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 		return "", fmt.Errorf("响应读取失败: %w", err)
 	}
 
+	// 上游 429（请求过于频繁）单独识别
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return "", errors.New("[UPSTREAM_429] 智谱 API 当前请求过于频繁，请稍后再试")
+	}
+
 	var chatResp chatResponse
 	if err := json.Unmarshal(respBytes, &chatResp); err != nil {
 		return "", fmt.Errorf("响应解析失败: %w", err)
@@ -245,6 +318,11 @@ func (s *AIService) GenerateSlug(ctx context.Context, title string) (string, err
 	result := strings.Trim(b.String(), "-")
 	if result == "" {
 		return "", errors.New("生成的 Slug 无效，请重试")
+	}
+
+	// 调用成功后，记录内置 Key 使用次数
+	if isBuiltIn {
+		s.recordBuiltInUsage(ctx)
 	}
 	return result, nil
 }

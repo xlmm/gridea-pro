@@ -300,6 +300,9 @@
             "generateFailed": "Falha ao gerar o slug, por favor tente novamente",
             "noApiKey": "Configure primeiro sua Zhipu API Key em Preferências → Configurações de IA",
             "networkError": "Falha na requisição de rede, verifique sua conexão ou configurações de proxy",
+            "dailyLimitReached": "Cota gratuita diária atingida (20/dia). Tente novamente amanhã ou configure sua própria API Key em Preferências → Configurações de IA",
+            "rateLimited": "Muitas solicitações, por favor mais devagar (limite: 5/minuto)",
+            "upstream429": "O serviço de IA está ocupado, tente novamente mais tarde",
             "noTitle": "Por favor, insira o título do artigo primeiro"
         },
         "network": {

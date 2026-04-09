@@ -84,6 +84,7 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 	cdnSettingRepo := repository.NewCdnSettingRepository(appDir)
 	pwaSettingRepo := repository.NewPwaSettingRepository(appDir)
 	aiSettingRepo := repository.NewAISettingRepository(appDir)
+	aiUsageRepo := repository.NewAIUsageRepository(appDir)
 
 	// 2. Init Services
 	tagService := service.NewTagService(tagRepo)
@@ -115,7 +116,7 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 	cdnUploadService := service.NewCdnUploadService(cdnSettingRepo, settingRepo, appDir)
 	deployService.SetCdnUploadService(cdnUploadService)
 	deployService.SetRenderer(rendererService)
-	aiService := service.NewAIService(aiSettingRepo, settingRepo)
+	aiService := service.NewAIService(aiSettingRepo, settingRepo, aiUsageRepo)
 
 	// 3. Wrap with Facades
 	return &AppServices{

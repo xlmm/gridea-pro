@@ -300,6 +300,9 @@
             "generateFailed": "Slug konnte nicht generiert werden, bitte erneut versuchen",
             "noApiKey": "Bitte legen Sie zuerst Ihren Zhipu API Key unter Einstellungen → KI-Einstellungen fest",
             "networkError": "Netzwerkanfrage fehlgeschlagen, bitte Netzwerk- oder Proxy-Einstellungen prüfen",
+            "dailyLimitReached": "Tägliches Gratiskontingent erreicht (20/Tag). Bitte morgen erneut versuchen oder eigenen API Key unter Einstellungen → KI-Einstellungen hinterlegen",
+            "rateLimited": "Zu viele Anfragen, bitte langsamer (Limit: 5/Minute)",
+            "upstream429": "KI-Dienst ist ausgelastet, bitte später erneut versuchen",
             "noTitle": "Bitte geben Sie zuerst den Artikeltitel ein"
         },
         "network": {

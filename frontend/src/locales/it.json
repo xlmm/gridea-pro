@@ -300,6 +300,9 @@
             "generateFailed": "Generazione dello slug non riuscita, riprova",
             "noApiKey": "Imposta prima la tua Zhipu API Key in Preferenze → Impostazioni IA",
             "networkError": "Richiesta di rete non riuscita, controlla la rete o le impostazioni del proxy",
+            "dailyLimitReached": "Quota gratuita giornaliera raggiunta (20/giorno). Riprova domani o imposta la tua API Key in Preferenze → Impostazioni IA",
+            "rateLimited": "Troppe richieste, per favore rallenta (limite: 5/minuto)",
+            "upstream429": "Il servizio IA è occupato, riprova più tardi",
             "noTitle": "Inserisci prima il titolo dell'articolo"
         },
         "network": {

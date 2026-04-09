@@ -125,7 +125,13 @@ const handleGenerateSlug = async () => {
         console.error('Generate slug failed:', e)
         const msg = String(e?.message || e || '')
         let toastMsg = t('settings.ai.generateFailed')
-        if (msg.includes('API Key')) {
+        if (msg.includes('[DAILY_LIMIT]')) {
+            toastMsg = t('settings.ai.dailyLimitReached')
+        } else if (msg.includes('[RATE_LIMIT]')) {
+            toastMsg = t('settings.ai.rateLimited')
+        } else if (msg.includes('[UPSTREAM_429]') || msg.includes('429')) {
+            toastMsg = t('settings.ai.upstream429')
+        } else if (msg.includes('API Key')) {
             toastMsg = t('settings.ai.noApiKey')
         } else if (msg.includes('请求失败') || /network|timeout/i.test(msg)) {
             toastMsg = t('settings.ai.networkError')
