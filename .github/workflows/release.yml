@@ -90,6 +90,21 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
+      - name: Patch wails.json productVersion
+        shell: bash
+        run: |
+          # 把 git tag (去掉前导 v) 写入 wails.json，Wails build 会把它烤进
+          # macOS Info.plist 的 CFBundleShortVersionString / Windows 资源版本。
+          # 这是 Wails 框架强制的真源——没有 ldflags 通道。
+          VER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const j = JSON.parse(fs.readFileSync('wails.json', 'utf8'));
+            j.info.productVersion = '$VER';
+            fs.writeFileSync('wails.json', JSON.stringify(j, null, 4) + '\n');
+            console.log('✔ wails.json productVersion → $VER');
+          "
+
       - name: Build macOS ${{ matrix.arch }}
         run: wails build -platform ${{ matrix.platform }} -clean -trimpath -ldflags "-X main.Version=${{ env.VERSION }}"
 
@@ -125,11 +140,11 @@ jobs:
           OUTPUT="${{ env.RELEASE_PREFIX }}_${VERSION}_macos_${{ matrix.arch }}.dmg"
           rm -f "$OUTPUT"
 
-          # 关键参数：
+          # 关键参数（坐标需与 background.svg 中的设计一致）：
           #   --window-size 600 400          ← 与 background 的尺寸一致
-          #   --icon … 150 200               ← 左侧 App 图标位置
-          #   --app-drop-link 450 200        ← 右侧 Applications 快捷方式位置
-          #   --background dmg-background.png← 自定义背景
+          #   --icon … 150 240               ← 左侧 App 图标位置（重心略偏下）
+          #   --app-drop-link 450 240        ← 右侧 Applications 快捷方式位置
+          #   --background dmg-background.tiff← hidpi 自定义背景
           create-dmg \
             --volname "${{ env.APP_NAME }}" \
             --background "dmg-background.tiff" \
@@ -137,9 +152,9 @@ jobs:
             --window-size 600 400 \
             --icon-size 110 \
             --text-size 13 \
-            --icon "${{ env.BIN_NAME }}.app" 150 200 \
+            --icon "${{ env.BIN_NAME }}.app" 150 240 \
             --hide-extension "${{ env.BIN_NAME }}.app" \
-            --app-drop-link 450 200 \
+            --app-drop-link 450 240 \
             --no-internet-enable \
             "$OUTPUT" \
             dmg-src/
@@ -183,6 +198,18 @@ jobs:
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Patch wails.json productVersion
+        shell: bash
+        run: |
+          VER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const j = JSON.parse(fs.readFileSync('wails.json', 'utf8'));
+            j.info.productVersion = '$VER';
+            fs.writeFileSync('wails.json', JSON.stringify(j, null, 4) + '\n');
+            console.log('✔ wails.json productVersion → $VER');
+          "
 
       - name: Install Inno Setup
         shell: pwsh
@@ -316,6 +343,18 @@ jobs:
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Patch wails.json productVersion
+        shell: bash
+        run: |
+          VER="${VERSION#v}"
+          node -e "
+            const fs = require('fs');
+            const j = JSON.parse(fs.readFileSync('wails.json', 'utf8'));
+            j.info.productVersion = '$VER';
+            fs.writeFileSync('wails.json', JSON.stringify(j, null, 4) + '\n');
+            console.log('✔ wails.json productVersion → $VER');
+          "
 
       - name: Install nfpm
         run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest

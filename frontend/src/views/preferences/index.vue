@@ -282,7 +282,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSiteStore } from '@/stores/site'
 import { toast } from '@/helpers/toast'
-import pkg from '../../../package.json'
+import { GetVersion } from '@/wailsjs/go/app/App'
 import Draggable from 'vuedraggable'
 import AppSetting from './components/AppSetting.vue'
 import DeleteConfirmDialog from '@/components/ConfirmDialog/DeleteConfirmDialog.vue'
@@ -333,7 +333,8 @@ const siteStore = useSiteStore()
 
 const activeTab = ref('appearance')
 const currentLanguage = ref<LocaleType>(locale.value as LocaleType)
-const version = pkg.version
+const version = ref('')
+GetVersion().then((v) => { version.value = v })
 
 // 站点管理
 const sites = ref<SiteEntry[]>([])
