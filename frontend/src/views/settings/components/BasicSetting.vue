@@ -113,42 +113,41 @@
         <div v-for="p in otherPlatforms" :key="p.id"
           class="group flex flex-col p-4 rounded-xl relative transition-all duration-200 bg-primary/2 border border-primary/20 hover:bg-primary/5 hover:shadow-xs hover:-translate-y-0.5">
 
-          <!-- 顶部：图标 + 名称 -->
+          <!-- 顶部：图标 + 名称 + 状态 -->
           <div class="flex items-start gap-3 mb-2">
             <div class="size-9 rounded-lg flex items-center justify-center text-white flex-shrink-0 shadow-sm"
               :style="{ background: p.color }">
               <component :is="p.icon" class="size-4.5" />
             </div>
             <div class="flex-1 min-w-0 pt-0.5">
-              <div class="text-sm font-semibold text-foreground leading-tight">{{ p.name }}</div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-foreground leading-tight">{{ p.name }}</span>
+                <span v-if="statuses[p.id]?.connected"
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-medium">
+                  <span class="size-1.5 rounded-full bg-green-500 inline-block"></span>
+                  {{ t('settings.network.connected') }}
+                </span>
+                <span v-else
+                  class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">
+                  <span class="size-1.5 rounded-full bg-muted-foreground/40 inline-block"></span>
+                  {{ t('settings.network.notConnected') }}
+                </span>
+              </div>
               <div class="text-xs text-muted-foreground mt-0.5 line-clamp-1">{{ p.description }}</div>
             </div>
           </div>
 
-          <!-- 状态 + 用户信息 + 配置摘要 -->
-          <div class="mb-3 space-y-1.5">
-            <template v-if="statuses[p.id]?.connected">
-              <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[11px] font-medium">
-                <span class="size-1.5 rounded-full bg-green-500 inline-block"></span>
-                {{ t('settings.network.connected') }}
-              </div>
-              <!-- 用户头像 + 用户名 + 配置摘要 -->
-              <div class="flex items-center gap-1.5 pl-0.5 text-[11px] text-muted-foreground">
-                <img v-if="statuses[p.id]?.avatarUrl" :src="statuses[p.id].avatarUrl"
-                  class="size-4 rounded flex-shrink-0" alt="" />
-                <span v-if="statuses[p.id]?.username" class="font-medium text-foreground/70">{{ statuses[p.id].username }}</span>
-                <template v-if="statuses[p.id]?.username && getConfigSummary(p.id)">
-                  <span class="text-muted-foreground/30">·</span>
-                </template>
-                <span v-if="getConfigSummary(p.id)" class="truncate">{{ getConfigSummary(p.id) }}</span>
-              </div>
-            </template>
-            <template v-else>
-              <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[11px] font-medium">
-                <span class="size-1.5 rounded-full bg-muted-foreground/40 inline-block"></span>
-                {{ t('settings.network.notConnected') }}
-              </div>
-            </template>
+          <!-- 已连接：用户信息摘要 -->
+          <div v-if="statuses[p.id]?.connected && statuses[p.id]?.username" class="mb-3">
+            <div class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <img v-if="statuses[p.id]?.avatarUrl" :src="statuses[p.id].avatarUrl"
+                class="size-4 rounded-full flex-shrink-0" alt="" />
+              <span class="font-medium text-foreground/70">{{ statuses[p.id].username }}</span>
+              <template v-if="getCardSummary(p.id)">
+                <span class="text-muted-foreground/30">·</span>
+                <span class="truncate">{{ getCardSummary(p.id) }}</span>
+              </template>
+            </div>
           </div>
 
           <!-- 底部操作 -->
@@ -730,6 +729,23 @@ function getConfigSummary(platformId: string): string {
   if (cfg.domain) {
     parts.push(String(cfg.domain).replace(/^https?:\/\//, ''))
   }
+  if (['github', 'gitee', 'coding'].includes(platformId)) {
+    if (cfg.repository) parts.push(cfg.repository)
+    if (cfg.branch) parts.push(cfg.branch)
+  } else if (platformId === 'netlify' && cfg.netlifySiteId) {
+    parts.push(cfg.netlifySiteId)
+  } else if (platformId === 'vercel' && cfg.repository) {
+    parts.push(cfg.repository)
+  } else if (platformId === 'sftp' && cfg.server) {
+    parts.push(`${cfg.server}${cfg.port ? ':' + cfg.port : ''}`)
+  }
+  return parts.join(' · ')
+}
+
+// 其他平台卡片的简略摘要（仅仓库+分支）
+function getCardSummary(platformId: string): string {
+  const cfg = (siteStore.site.setting.platformConfigs || {})[platformId] || {}
+  const parts: string[] = []
   if (['github', 'gitee', 'coding'].includes(platformId)) {
     if (cfg.repository) parts.push(cfg.repository)
     if (cfg.branch) parts.push(cfg.branch)
