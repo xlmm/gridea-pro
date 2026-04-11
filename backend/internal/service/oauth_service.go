@@ -201,7 +201,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		errParam := r.URL.Query().Get("error")
 		if errParam != "" {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprint(w, oauthResultHTML(false, errParam, ""))
+			fmt.Fprint(w, oauthResultHTML(false, errParam, "", ""))
 			runtime.EventsEmit(ctx, "oauth:error", map[string]string{"provider": providerID, "error": errParam})
 			return
 		}
@@ -209,7 +209,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		code := r.URL.Query().Get("code")
 		state := r.URL.Query().Get("state")
 		if state != expectedState {
-			fmt.Fprint(w, oauthResultHTML(false, "state 验证失败，请重新授权", ""))
+			fmt.Fprint(w, oauthResultHTML(false, "state 验证失败，请重新授权", "", ""))
 			return
 		}
 
@@ -217,7 +217,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		tokenResp, err := p.ExchangeCode(client, code, redirectURI)
 		if err != nil {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprint(w, oauthResultHTML(false, err.Error(), ""))
+			fmt.Fprint(w, oauthResultHTML(false, err.Error(), "", ""))
 			runtime.EventsEmit(ctx, "oauth:error", map[string]string{"provider": providerID, "error": err.Error()})
 			return
 		}
@@ -225,7 +225,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		// 存入 Keychain
 		credKey := providerID + ":" + primaryCredField(providerID)
 		if err := s.credService.Set(credKey, tokenResp.AccessToken); err != nil {
-			fmt.Fprint(w, oauthResultHTML(false, "存储凭证失败: "+err.Error(), ""))
+			fmt.Fprint(w, oauthResultHTML(false, "存储凭证失败: "+err.Error(), "", ""))
 			return
 		}
 
@@ -249,7 +249,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		})
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, oauthResultHTML(true, "", userInfo.Username))
+		fmt.Fprint(w, oauthResultHTML(true, "", userInfo.Username, userInfo.AvatarURL))
 	})
 
 	server.Serve(listener)
@@ -292,25 +292,71 @@ func generateOAuthState() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func oauthResultHTML(success bool, errMsg, username string) string {
+func oauthResultHTML(success bool, errMsg, username, avatarURL string) string {
 	if success {
 		name := username
 		if name == "" {
 			name = "账号"
 		}
-		return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>授权成功</title>
-<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f5f5f7}
-.card{text-align:center;padding:40px 48px;background:#fff;border-radius:20px;box-shadow:0 8px 30px rgba(0,0,0,.1)}
-.icon{font-size:52px;margin-bottom:16px}.h{font-size:20px;font-weight:600;color:#1c1c1e;margin:0 0 8px}
-.sub{font-size:14px;color:#8e8e93;margin:0}</style></head>
-<body><div class="card"><div class="icon">✅</div><p class="h">授权成功</p>
-<p class="sub">` + name + ` 已连接，可以关闭此标签页</p></div></body></html>`
+		avatarHTML := ""
+		if avatarURL != "" {
+			avatarHTML = `<img src="` + avatarURL + `" class="avatar" alt="" />`
+		}
+		return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Gridea Pro - 授权成功</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#fdf6f0 0%,#fef9f4 50%,#f8f0e8 100%)}
+.card{text-align:center;padding:48px 56px;background:#fff;border-radius:24px;box-shadow:0 4px 24px rgba(0,0,0,.06);max-width:420px;width:100%}
+.logo{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:32px}
+.logo svg{width:28px;height:28px}
+.logo span{font-size:16px;font-weight:700;color:#1c1c1e;letter-spacing:-.3px}
+.check{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#34c759,#30d158);display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.check svg{width:28px;height:28px;color:#fff}
+.avatar{width:48px;height:48px;border-radius:50%;border:3px solid #34c759;margin:0 auto 16px;display:block}
+.title{font-size:22px;font-weight:700;color:#1c1c1e;margin-bottom:8px}
+.user{font-size:15px;color:#3c3c43;margin-bottom:6px;font-weight:500}
+.hint{font-size:13px;color:#8e8e93;line-height:1.6}
+.divider{height:1px;background:#f2f2f7;margin:24px 0}
+.footer{font-size:11px;color:#c7c7cc}
+</style></head>
+<body><div class="card">
+<div class="logo">
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="11" stroke="#e8835a" stroke-width="2"/><path d="M7 12l2 6l6-10" stroke="#e8835a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span>Gridea Pro</span>
+</div>
+<div class="check"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+` + avatarHTML + `
+<div class="title">授权成功</div>
+<div class="user">` + name + ` 已连接</div>
+<div class="hint">请返回 Gridea Pro 查看，可以关闭此标签页</div>
+<div class="divider"></div>
+<div class="footer">Gridea Pro · 下一代桌面静态博客写作客户端</div>
+</div></body></html>`
 	}
-	return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>授权失败</title>
-<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f5f5f7}
-.card{text-align:center;padding:40px 48px;background:#fff;border-radius:20px;box-shadow:0 8px 30px rgba(0,0,0,.1)}
-.icon{font-size:52px;margin-bottom:16px}.h{font-size:20px;font-weight:600;color:#1c1c1e;margin:0 0 8px}
-.sub{font-size:14px;color:#8e8e93;margin:0;word-break:break-all}</style></head>
-<body><div class="card"><div class="icon">❌</div><p class="h">授权失败</p>
-<p class="sub">` + errMsg + `</p></div></body></html>`
+	return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Gridea Pro - 授权失败</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#fdf6f0 0%,#fef9f4 50%,#f8f0e8 100%)}
+.card{text-align:center;padding:48px 56px;background:#fff;border-radius:24px;box-shadow:0 4px 24px rgba(0,0,0,.06);max-width:420px;width:100%}
+.logo{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:32px}
+.logo svg{width:28px;height:28px}
+.logo span{font-size:16px;font-weight:700;color:#1c1c1e;letter-spacing:-.3px}
+.icon{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#ff3b30,#ff453a);display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.icon svg{width:28px;height:28px;color:#fff}
+.title{font-size:22px;font-weight:700;color:#1c1c1e;margin-bottom:8px}
+.err{font-size:13px;color:#8e8e93;line-height:1.6;word-break:break-all}
+.divider{height:1px;background:#f2f2f7;margin:24px 0}
+.footer{font-size:11px;color:#c7c7cc}
+</style></head>
+<body><div class="card">
+<div class="logo">
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="11" stroke="#e8835a" stroke-width="2"/><path d="M7 12l2 6l6-10" stroke="#e8835a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span>Gridea Pro</span>
+</div>
+<div class="icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div>
+<div class="title">授权失败</div>
+<div class="err">` + errMsg + `</div>
+<div class="divider"></div>
+<div class="footer">Gridea Pro · 下一代桌面静态博客写作客户端</div>
+</div></body></html>`
 }
