@@ -528,10 +528,11 @@ async function handleOAuth(platformId: string) {
 }
 
 async function handleRevoke(platformId: string) {
-  if (!confirm(t('settings.network.revokeConfirm'))) return
   try {
     await RevokeToken(platformId)
-    statuses.value[platformId] = { connected: false, connectedVia: '', username: '', avatarUrl: '', email: '' }
+    // 从后端重新加载状态，确保一致
+    await loadStatuses()
+    EventsEmit('app-site-reload')
     toast.success(`${getPlatformName(platformId)} ${t('settings.network.disconnected')}`)
   } catch (e: any) {
     const msg = typeof e === 'string' ? e : (e?.message || t('settings.network.disconnectFailed'))
