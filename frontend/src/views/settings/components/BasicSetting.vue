@@ -8,102 +8,69 @@
         {{ t('settings.network.currentPlatform') }}
       </h2>
       <div class="border border-primary/20 rounded-xl overflow-hidden">
-        <div class="flex flex-col md:flex-row h-full">
-          <!-- 左侧：图标 + 名称 -->
-          <div class="flex items-center gap-4 px-8 py-8 md:w-[220px] flex-shrink-0">
-            <div class="size-14 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-md"
-              :style="{ background: activePlatformData.color }">
-              <component :is="activePlatformData.icon" class="size-7" />
-            </div>
-            <div>
-              <div class="text-xl font-bold leading-tight">{{ activePlatformData.name }}</div>
-              <div class="text-xs text-muted-foreground mt-1 leading-relaxed">{{ activePlatformData.description }}</div>
-            </div>
+        <div class="flex items-center gap-6 px-6 py-5">
+          <!-- 图标 -->
+          <div class="size-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm"
+            :style="{ background: activePlatformData.color }">
+            <component :is="activePlatformData.icon" class="size-6" />
           </div>
 
-          <!-- 分割线 -->
-          <div class="hidden md:block w-px bg-border my-6"></div>
-
-          <!-- 中间：连接状态 -->
-          <div class="flex-1 px-8 py-8 flex flex-col justify-center gap-3">
-            <!-- OAuth 已连接 -->
-            <template v-if="statuses[activePlatformData.id]?.connected && statuses[activePlatformData.id]?.connectedVia === 'oauth'">
-              <div class="flex items-center gap-2">
-                <span class="size-2 rounded-full bg-green-500 inline-block flex-shrink-0"></span>
-                <span class="text-sm font-medium text-green-600 dark:text-green-400">{{ t('settings.network.connected') }}</span>
-                <span class="text-xs text-muted-foreground ml-1">via OAuth</span>
-              </div>
-              <div v-if="statuses[activePlatformData.id]?.username" class="flex items-center gap-2">
-                <img v-if="statuses[activePlatformData.id]?.avatarUrl"
-                  :src="statuses[activePlatformData.id].avatarUrl"
-                  class="size-5 rounded-full" alt="" />
-                <span class="text-sm text-foreground font-medium">{{ statuses[activePlatformData.id].username }}</span>
-              </div>
-            </template>
-            <!-- 手动 Token 已保存 -->
-            <template v-else-if="statuses[activePlatformData.id]?.connected && statuses[activePlatformData.id]?.connectedVia === 'manual'">
-              <div class="flex items-center gap-2">
-                <span class="size-2 rounded-full bg-amber-500 inline-block flex-shrink-0"></span>
-                <span class="text-sm font-medium text-amber-600 dark:text-amber-400">{{ t('settings.network.tokenSaved') }}</span>
-              </div>
-              <div class="text-xs text-muted-foreground">{{ t('settings.network.manualConfigTitle') }}</div>
-            </template>
-            <!-- 未连接 -->
-            <template v-else>
-              <div class="flex items-center gap-2">
-                <span class="size-2 rounded-full bg-muted-foreground/40 inline-block flex-shrink-0"></span>
-                <span class="text-sm text-muted-foreground">{{ t('settings.network.notConnected') }}</span>
-              </div>
-              <div class="text-xs text-muted-foreground">{{ t('settings.network.configure') }}</div>
-            </template>
+          <!-- 名称 + 描述 -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-3">
+              <span class="text-base font-bold text-foreground">{{ activePlatformData.name }}</span>
+              <!-- 状态 chip -->
+              <template v-if="statuses[activePlatformData.id]?.connected && statuses[activePlatformData.id]?.connectedVia === 'oauth'">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[11px] font-medium">
+                  <span class="size-1.5 rounded-full bg-green-500 inline-block"></span>
+                  {{ statuses[activePlatformData.id].username || t('settings.network.connected') }}
+                </span>
+              </template>
+              <template v-else-if="statuses[activePlatformData.id]?.connected">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-medium">
+                  <span class="size-1.5 rounded-full bg-amber-500 inline-block"></span>
+                  {{ t('settings.network.tokenSaved') }}
+                </span>
+              </template>
+              <template v-else>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[11px] font-medium">
+                  <span class="size-1.5 rounded-full bg-muted-foreground/40 inline-block"></span>
+                  {{ t('settings.network.notConnected') }}
+                </span>
+              </template>
+            </div>
+            <div class="text-xs text-muted-foreground mt-1">{{ activePlatformData.description }}</div>
           </div>
 
-          <!-- 分割线 -->
-          <div class="hidden md:block w-px bg-border my-6"></div>
-
-          <!-- 右侧：操作按钮 -->
-          <div class="w-full md:w-[200px] px-6 py-8 flex flex-col justify-center gap-2.5">
-            <!-- OAuth 已连接 -->
-            <template v-if="statuses[activePlatformData.id]?.connected && statuses[activePlatformData.id]?.connectedVia === 'oauth'">
-              <Button variant="outline" size="sm" class="w-full h-8 text-xs rounded-full"
+          <!-- 操作按钮 -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <template v-if="statuses[activePlatformData.id]?.connected">
+              <Button variant="outline" size="sm" class="h-8 text-xs rounded-full px-4"
                 @click="openDrawer(activePlatformData.id)">
                 <Cog6ToothIcon class="size-3.5 mr-1.5" />
                 {{ t('settings.network.editConfig') }}
               </Button>
               <Button variant="ghost" size="sm"
-                class="w-full h-8 text-xs rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                class="h-8 text-xs rounded-full px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
                 @click="handleRevoke(activePlatformData.id)">
                 {{ t('settings.network.disconnect') }}
               </Button>
             </template>
-            <!-- 手动配置 -->
-            <template v-else-if="statuses[activePlatformData.id]?.connected">
-              <Button variant="outline" size="sm" class="w-full h-8 text-xs rounded-full"
-                @click="openDrawer(activePlatformData.id)">
-                <Cog6ToothIcon class="size-3.5 mr-1.5" />
-                {{ t('settings.network.editConfig') }}
-              </Button>
-              <Button variant="ghost" size="sm"
-                class="w-full h-8 text-xs rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                @click="handleRevoke(activePlatformData.id)">
-                {{ t('settings.network.disconnect') }}
-              </Button>
-            </template>
-            <!-- 未连接 -->
             <template v-else>
               <Button v-if="activePlatformData.oauthAvailable && !oauthLoading[activePlatformData.id]"
-                variant="default" size="sm" class="w-full h-8 text-xs rounded-full"
+                variant="default" size="sm" class="h-8 text-xs rounded-full px-4"
                 @click="handleOAuth(activePlatformData.id)">
                 {{ t('settings.network.authorizeWith') }}
               </Button>
               <Button v-if="activePlatformData.oauthAvailable && oauthLoading[activePlatformData.id]"
-                variant="default" size="sm" class="w-full h-8 text-xs rounded-full" disabled>
+                variant="default" size="sm" class="h-8 text-xs rounded-full px-4" disabled>
                 <ArrowPathIcon class="size-3.5 animate-spin mr-1.5" />
                 {{ t('settings.network.waitingAuth') }}
               </Button>
               <Button :variant="activePlatformData.oauthAvailable ? 'outline' : 'default'"
-                size="sm" class="w-full h-8 text-xs rounded-full"
+                size="sm" class="h-8 text-xs rounded-full px-4"
                 @click="openDrawer(activePlatformData.id)">
+                <Cog6ToothIcon class="size-3.5 mr-1.5" />
                 {{ t('settings.network.configure') }}
               </Button>
             </template>
