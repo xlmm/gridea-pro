@@ -188,6 +188,24 @@
           <!-- 抽屉内容 -->
           <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
+            <!-- 已连接用户信息 -->
+            <div v-if="statuses[drawerPlatform]?.connected && statuses[drawerPlatform]?.username"
+              class="flex items-center gap-3 px-4 py-3 bg-green-500/5 border border-green-500/15 rounded-lg">
+              <img v-if="statuses[drawerPlatform]?.avatarUrl"
+                :src="statuses[drawerPlatform].avatarUrl"
+                class="size-9 rounded-full flex-shrink-0" alt="" />
+              <div class="size-9 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0 text-green-600" v-else>
+                <UserIcon class="size-4.5" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-foreground">{{ statuses[drawerPlatform].username }}</div>
+                <div class="text-[11px] text-green-600 dark:text-green-400">
+                  {{ statuses[drawerPlatform].connectedVia === 'oauth' ? 'OAuth' : t('settings.network.manualConfigTitle') }}
+                  · {{ t('settings.network.connected') }}
+                </div>
+              </div>
+            </div>
+
             <!-- SFTP 提示 -->
             <div v-if="drawerPlatform === 'sftp'"
               class="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2.5">
@@ -371,7 +389,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSiteStore } from '@/stores/site'
 import { toast } from '@/helpers/toast'
-import { FolderOpenIcon, Cog6ToothIcon, ArrowPathIcon, XMarkIcon, InformationCircleIcon, KeyIcon, GlobeAltIcon, CodeBracketIcon, ServerStackIcon } from '@heroicons/vue/24/outline'
+import { FolderOpenIcon, Cog6ToothIcon, ArrowPathIcon, XMarkIcon, InformationCircleIcon, KeyIcon, GlobeAltIcon, CodeBracketIcon, ServerStackIcon, UserIcon } from '@heroicons/vue/24/outline'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
