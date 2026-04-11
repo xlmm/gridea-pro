@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="build/appicon.png" alt="Gridea Pro" width="80">
+  <img src="build/appicon.png" alt="Gridea Pro" width="100">
 </p>
 
 <h1 align="center">Gridea Pro</h1>
@@ -8,125 +8,215 @@
   下一代桌面静态博客写作客户端 —— 像用 Notion 一样写博客。
 </p>
 <p align="center">
-  一个基于 Wails (Go + Vue 3) 的静态博客写作客户端，开源免费！
+  一个基于 Wails (Go + Vue 3) 的静态博客写作客户端，永久开源免费！
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL%20v3.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/Gridea-Pro/gridea-pro/releases"><img src="https://img.shields.io/github/v/release/Gridea-Pro/gridea-pro?color=brightgreen" alt="Release"></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-brightgreen.svg" alt="Platform">
-  <img src="https://img.shields.io/badge/Go-1.25+-00ADD8.svg?logo=go&logoColor=white" alt="Go">
+  <img src="https://img.shields.io/badge/Go-1.22+-00ADD8.svg?logo=go&logoColor=white" alt="Go">
   <img src="https://img.shields.io/badge/Vue-3.x-4FC08D.svg?logo=vue.js&logoColor=white" alt="Vue 3">
   <a href="README.md"><img src="https://img.shields.io/badge/English-README-orange.svg" alt="English"></a>
 </p>
 
----
-
-<h3 align="center">
-  <a href="https://are.ink/">述尔</a> — 一个产品经理的碎碎念 | 温故而知新
-</h3>
-
 <p align="center">
-  <b>Preview / 预览站点</b>&nbsp;&nbsp;👉&nbsp;&nbsp;<a href="https://are.ink/">https://are.ink/</a>
+  <a href="README-en.md">English</a> · <b>简体中文</b>
 </p>
 
 ---
 
-> **Gridea Pro** 基于 [Gridea](https://github.com/getgridea/gridea)（10k+ Stars）完全升级重构，感谢原作者 [@EryouHao](https://github.com/EryouHao) 创造了  [Gridea](https://github.com/getgridea/gridea) 这个优秀的项目，帮助了无数人建立自己的博客。原版 Gridea 已停止更新约四年，Gridea Pro 以全新技术栈延续其愿景：**让每个人都能零门槛拥有自己的博客。**
+<p align="center">
+  <b>预览站点</b>&nbsp;&nbsp;👉&nbsp;&nbsp;<a href="https://are.ink/">are.ink</a>
+</p>
+
+---
+
+**Gridea Pro** 基于 [Gridea](https://github.com/getgridea/gridea)（10k+ Stars）完全重写，使用 Go + Wails + Vue 3 全新构建。原版 Gridea 已停止维护约四年，Gridea Pro 延续其核心愿景：**让每个人都能零门槛拥有自己的博客。**
+
+感谢原作者 [@EryouHao](https://github.com/EryouHao) 创造了  [Gridea](https://github.com/getgridea/gridea) 这个优秀的项目，帮助了无数人建立自己的博客。
+
+---
+
+## Gridea Pro 官方交流群
+
+扫描下方二维码加入微信交流群，反馈问题、交流使用心得：
+
+<p align="center">
+  <img src="images/wechatgroup.jpg" alt="微信交流群" width="260">
+</p>
+
+> 二维码会定期更新，如已过期请提交 Issue 获取最新二维码。
 
 ---
 
 ## 软件截图
-### 文章管理页面
 
-![文章管理页面](images/post.png)
+<table>
+  <tr>
+    <td align="center"><b>文章管理</b></td>
+    <td align="center"><b>写作编辑器</b></td>
+  </tr>
+  <tr>
+    <td><img src="images/post.png" alt="文章管理"></td>
+    <td><img src="images/editor.png" alt="写作编辑器"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>闪念速记</b></td>
+    <td align="center"><b>评论管理</b></td>
+  </tr>
+  <tr>
+    <td><img src="images/memos.png" alt="闪念速记"></td>
+    <td><img src="images/comments.png" alt="评论管理"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>菜单管理</b></td>
+    <td align="center"><b>分类管理</b></td>
+  </tr>
+  <tr>
+    <td><img src="images/menus.png" alt="菜单管理"></td>
+    <td><img src="images/categories.png" alt="分类管理"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>标签管理</b></td>
+    <td align="center"><b>主题管理</b></td>
+  </tr>
+  <tr>
+    <td><img src="images/tags.png" alt="标签管理"></td>
+    <td><img src="images/themes.png" alt="主题管理"></td>
+  </tr>
+</table>
 
-### 写作页面
+---
 
-![编辑页面](images/editor.png)
+## 为什么选 Gridea Pro？
 
-### 闪念页面
+Hugo、Hexo、Jekyll 都很优秀，但它们面向开发者，且上手门槛不低——你需要装 Node.js、配置命令行、手动写部署脚本。Gridea Pro 走另一条路：**下载即用，所有操作都在 GUI 里完成，同时集成 AI 能力，顺应时代潮流。**
 
-![闪念页面](images/memos.png)
-
-### 评论管理页面
-
-![评论管理页面](images/comments.png)
-
-### 菜单管理页面
-
-![菜单管理页面](images/menus.png)
-
-### 分类管理页面
-
-![分类管理页面](images/categories.png)
-
-### 标签管理页面
-
-![标签管理页面](images/tags.png)
-
-### 友链管理页面
-
-![友链管理页面](images/links.png)
-
-
-## 为什么选择 Gridea Pro？
-
-- **零命令行**：下载安装即可使用，所有操作通过可视化界面完成，无需操作终端命令行
-- **一站式工作流**：写作、排版、主题配置、部署全部在一个桌面应用内闭环
-- **轻量高性能**：基于 Go + Wails 构建，启动只需 0.5-1 秒，内存占用 30-50MB（Electron 方案通常 150-200MB）
-- **国际化支持**：软件支持 11 种国际主流语言
-
-## 对比
-
-| 特性 | Gridea Pro | Hugo | Hexo |
-|------|:----------:|:----:|:----:|
-| 安装方式 | 下载桌面应用 | CLI 安装 | CLI + Node.js |
-| 上手门槛 | 图形界面，开箱即用 | 需要终端操作经验 | 需要 Node.js 和终端经验 |
-| 写作环境 | 内置 Monaco 编辑器 | 自行选择外部编辑器 | 自行选择外部编辑器 |
+| | Gridea Pro | Hugo | Hexo |
+|---|:---:|:---:|:---:|
+| 安装方式 | 下载桌面应用 | CLI | CLI + Node.js |
+| 上手门槛 | 开箱即用 | 需要终端经验 | 需要 Node.js + 终端 |
+| 写作环境 | 内置 Monaco 编辑器 | 自选外部编辑器 | 自选外部编辑器 |
 | 主题切换 | 应用内可视化切换 | 修改配置文件 | 修改配置文件 |
-| 部署方式 | 一键部署（GUI） | 手动或 CI/CD | 手动或 CI/CD |
-| 模板引擎 | Jinja2 / EJS / Go Templates | Go Templates | EJS / Nunjucks |
-| 构建速度 | 快（百篇级博客） | 极快 | 中等 |
-| 生态规模 | 成长中 | 成熟 | 成熟 |
-| 适合人群 | 希望专注写作的用户 | 熟悉命令行的开发者 | 熟悉前端的开发者 |
+| 一键部署 | ✅ GUI 操作 | ❌ 手动 / CI | ❌ 手动 / CI |
+| AI 集成 | ✅ MCP + 内置模型 | ❌ | ❌ |
+| 内存占用 | ~30–50 MB | — | — |
+| 模板引擎 | Jinja2 / EJS / Go | Go Templates | EJS / Nunjucks |
 
-> Hugo 和 Hexo 是优秀的静态站点生成器，适合需要高度定制和大规模站点的场景。Gridea Pro 专注于为"只想写博客"的用户提供最短路径。
+> Hugo 和 Hexo 是适合开发者的强大工具，Gridea Pro 专为"只想好好写博客"的人设计。
 
-## 功能
+---
 
-### 编辑器
+## 核心功能
 
-- 内置 Monaco Editor（VS Code 同款引擎），语法高亮、智能补全
-- 数学公式（KaTeX）、脚注、任务列表、Emoji、目录生成
+### ✍️ 写作与编辑
+
+- **Monaco Editor**（VS Code 同款引擎）：语法高亮、智能补全、Vim/Emacs 键位支持
+- Markdown 扩展：数学公式（KaTeX）、脚注、任务列表、Emoji、自动目录
 - 代码块语法高亮，支持主流编程语言
-- 实时预览
-
-### 内容管理
-
-- 文章管理：标签、分类、置顶、草稿、自定义 URL
-- Memos（短笔记 / 灵感速记）
-- 客户端全文搜索
+- 实时预览，所见即所得
 - CJK 精确字数统计与阅读时间估算
 
-### 主题系统
+### 📋 内容管理
 
-- 三模板引擎可选：Jinja2（Pongo2）、EJS、Go Templates
-- 应用内可视化主题切换与参数配置
-- 主题 config.json 声明式配置面板
+- 文章：标签、分类、置顶、草稿、自定义 URL Slug、特色图片
+- **闪念（Memos）**：灵感速记，支持 `#标签` 语法、图片附件、热力图统计
+- 友情链接、导航菜单管理
+- 评论管理：支持回复与删除（需评论系统配合）
+- 客户端全文搜索
+
+### 🎨 主题系统
+
+- **9 款内置主题**，点击即切换：`amore`、`flavor`、`claudo`、`letters`、`inotes`、`fly`、`simple`、`notes` 等
+- 三种模板引擎：**Jinja2（Pongo2）**、**EJS**、**Go Templates**
+- 主题参数可视化配置（由 `config.json` 声明生成表单），无需手动改文件
 - 支持暗色模式、响应式布局
 
-### 部署与 SEO
+### 🚀 部署
 
-- 一键部署：GitHub Pages、Vercel、Netlify、Gitee、Coding、SFTP
-- 自动生成 sitemap.xml、robots.txt、RSS/Atom Feed
+- 一键部署，支持 6 大平台：GitHub Pages、Vercel、Netlify、Gitee、Coding、SFTP/FTP
+- 内置纯 Go 实现的 Git 引擎，**不依赖系统 Git**，同步更稳定
+- CDN 媒体文件自动上传：部署时将图片等资源同步到 GitHub 仓库，支持自定义保存路径
+- 自定义域名（CNAME）支持
+
+### 🔍 SEO
+
+- 自动生成 `sitemap.xml`（含图片元数据）、`robots.txt`、`RSS/Atom Feed`
 - Open Graph、Twitter Card 等社交分享 Meta 标签
-- 自定义域名支持
+- JSON-LD 结构化数据
+- Google Analytics、百度统计、Google Search Console 验证码
+- 自定义 `<head>` 代码注入
 
-### 社交与集成
+### 💬 评论系统集成
 
-- 评论系统集成（Gitalk、Disqus 等）
-- MCP（AI 集成）支持
-- 11 种界面语言
+内置 7 种评论系统，勾选即启用，无需手动引入代码：
+
+<table>
+  <tr>
+    <td align="center"><b>Gitalk</b></td>
+    <td align="center"><b>Giscus</b></td>
+    <td align="center"><b>Disqus</b></td>
+    <td align="center"><b>Valine</b></td>
+    <td align="center"><b>Waline</b></td>
+    <td align="center"><b>Twikoo</b></td>
+    <td align="center"><b>Cusdis</b></td>
+  </tr>
+</table>
+
+### 🤖 AI 集成（MCP）
+
+Gridea Pro 实现了 [MCP（Model Context Protocol）](https://modelcontextprotocol.io/) 协议，让 AI 助手（Claude、Cursor 等）可以直接操作你的博客：
+
+**25+ MCP 工具**，覆盖博客管理全流程：
+
+| 类别 | 工具 |
+|------|------|
+| 文章 | 列表、查看、创建、更新、删除 |
+| 闪念 | 列表、创建、更新、删除、热力图统计 |
+| 标签 / 分类 | 完整 CRUD |
+| 菜单 / 友链 | 完整 CRUD |
+| 评论 | 列表、回复、删除 |
+| 主题 | 列表主题、查看 / 更新主题配置 |
+| 站点 | 查看 / 更新全局设置 |
+| 渲染 & 部署 | 触发渲染、触发部署（需显式开启） |
+
+**内置 5 个工作流提示词**：写作助手、闪念整理成文、内容审查、站点健康检查、文章翻译。
+
+**MCP 配置示例：**
+
+```json
+{
+  "mcpServers": {
+    "gridea-pro": {
+      "command": "/path/to/gridea-pro",
+      "args": ["--mcp"],
+      "env": {
+        "GRIDEA_SITE_DIR": "/path/to/your/site",
+        "DEPLOY_ENABLED": "false"
+      }
+    }
+  }
+}
+```
+
+> `DEPLOY_ENABLED=true` 时，AI 可直接触发部署；默认关闭，需手动确认。
+
+**内置 AI 模型**：无需配置 API Key 即可使用内置免费模型（每日限额 20 次）；也支持接入 13 种自定义模型服务商：OpenAI、Anthropic、DeepSeek、Gemini、Kimi、Qwen、GLM 等。
+
+### 📱 PWA 支持
+
+- 一键开启 Progressive Web App
+- 可配置：应用名称、图标、主题色、屏幕方向等
+- 用户可将博客"安装"到手机/桌面，离线访问
+
+### 🌍 国际化
+
+软件界面支持 **11 种语言**：
+
+`简体中文` · `繁体中文` · `English` · `日本語` · `한국어` · `Deutsch` · `Español` · `Français` · `Italiano` · `Português (BR)` · `Русский`
+
+---
 
 ## 快速开始
 
@@ -134,71 +224,57 @@
 
 从 [Releases](https://github.com/Gridea-Pro/gridea-pro/releases) 页面下载对应平台的安装包：
 
-| 平台 | 格式 |
-|------|------|
+| 平台 | 安装包 |
+|------|--------|
 | macOS | `.dmg` |
-| Windows | `.exe` 安装包 |
+| Windows | `.exe` |
 | Linux | `.AppImage` / `.deb` |
 
 下载后双击安装，打开即可开始写作。
 
+**从旧版 Gridea 迁移**：在应用内将「站点目录」指向原来的 Gridea 数据目录，启动后自动迁移，无需手动操作。
+
 ### 从源码构建
 
-确保已安装 Go 1.21+、Node.js 18+、[Wails v2](https://wails.io/)。
+**前置要求**：Go 1.22+、Node.js 18+、[Wails v2](https://wails.io/)
 
 ```bash
-# 克隆仓库
 git clone https://github.com/Gridea-Pro/gridea-pro.git
 cd gridea-pro
 
-# 安装前端依赖
 cd frontend && npm install && cd ..
 
-# 开发模式运行
+# 开发模式（热重载）
 wails dev
 
 # 构建生产版本
 wails build
 ```
 
+---
+
 ## 主题开发
 
-Gridea Pro 支持三种模板引擎开发主题，推荐使用 Jinja2（Pongo2）：
+Gridea Pro 支持三种模板引擎，推荐使用 Jinja2（Pongo2）。主题目录结构：
 
 ```
 my-theme/
-├── config.json          # 主题配置声明
+├── config.json          # 主题配置声明（自动生成可视化配置面板）
 ├── templates/
 │   ├── index.html       # 首页
-│   ├── post.html        # 文章页
+│   ├── post.html        # 文章详情页
 │   ├── tag.html         # 标签页
 │   ├── archives.html    # 归档页
 │   └── partials/        # 可复用组件
 └── assets/
-    ├── styles/          # CSS
-    └── scripts/         # JS
+    ├── styles/
+    └── scripts/
 ```
 
 详细开发文档请参阅 [主题开发指南](https://github.com/Gridea-Pro/gridea-pro/wiki/Theme-Development)。
 
-## 路线图
+---
 
-- [ ] 编辑器优化，替换 tiptap 编辑器
-- [ ] 主题市场（在线浏览与一键安装）
-- [ ] 图片管理与图床集成
-- [ ] 文章版本历史
-- [ ] 多博客实例管理
-- [ ] 插件系统
-
-## 交流群
-
-扫描下方二维码加入微信交流群，反馈问题、交流使用心得：
-
-<p align="center">
-  <img src="images/wechatgroup.jpg" alt="微信交流群" width="300">
-</p>
-
-> 二维码会定期更新，如已过期请提交 Issue 获取最新二维码。
 
 ## 参与贡献
 
@@ -214,15 +290,19 @@ git checkout -b feature/your-feature
 # 开发完成后提交 PR
 ```
 
+---
+
 ## 致谢
 
-- [Gridea](https://github.com/getgridea/gridea) — 原版项目，感谢 [@EryouHao](https://github.com/EryouHao) 的开创性工作
+- [Gridea](https://github.com/getgridea/gridea) — 原版项目，感谢 [@EryouHao](https://github.com/EryouHao) 的创造
 - [Wails](https://wails.io/) — Go 桌面应用框架
 - [Vue 3](https://vuejs.org/) — 前端框架
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) — 代码编辑器引擎
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) — 编辑器引擎
 - [Pongo2](https://github.com/flosch/pongo2) — Go 实现的 Jinja2 模板引擎
 - [KaTeX](https://katex.org/) — 数学公式渲染
-- [Tailwind CSS](https://tailwindcss.com/) — 原子化 CSS 框架
+- [Tailwind CSS](https://tailwindcss.com/) — CSS 框架
+
+---
 
 ## 开源协议
 
