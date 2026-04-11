@@ -190,7 +190,13 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 	}()
 
 	mux.HandleFunc("/oauth/callback", func(w http.ResponseWriter, r *http.Request) {
-		defer server.Close()
+		// 延迟关闭服务器，确保 HTML 响应完整发送到浏览器
+		defer func() {
+			go func() {
+				time.Sleep(3 * time.Second)
+				server.Close()
+			}()
+		}()
 
 		errParam := r.URL.Query().Get("error")
 		if errParam != "" {
