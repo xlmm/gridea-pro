@@ -138,14 +138,18 @@
           </div>
 
           <!-- 已连接：用户信息摘要 -->
-          <div v-if="statuses[p.id]?.connected && statuses[p.id]?.username" class="mb-3">
-            <div class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <img v-if="statuses[p.id]?.avatarUrl" :src="statuses[p.id].avatarUrl"
-                class="size-4 rounded-full flex-shrink-0" alt="" />
-              <span class="font-medium text-foreground/70">{{ statuses[p.id].username }}</span>
-              <template v-if="getCardSummary(p.id)">
-                <span class="text-muted-foreground/30">·</span>
-                <span class="truncate">{{ getCardSummary(p.id) }}</span>
+          <div v-if="statuses[p.id]?.connected && statuses[p.id]?.username" class="mt-1 mb-3">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2 bg-muted/40 rounded-lg text-[11px] text-muted-foreground">
+              <div class="flex items-center gap-1.5">
+                <img v-if="statuses[p.id]?.avatarUrl" :src="statuses[p.id].avatarUrl"
+                  class="size-4 rounded-full flex-shrink-0" alt="" />
+                <span class="font-medium text-foreground/70">{{ statuses[p.id].username }}</span>
+              </div>
+              <template v-for="item in getCardItems(p.id)" :key="item.value">
+                <div class="flex items-center gap-1">
+                  <component :is="item.icon" class="size-3 opacity-50" />
+                  <span>{{ item.value }}</span>
+                </div>
               </template>
             </div>
           </div>
@@ -742,21 +746,21 @@ function getConfigSummary(platformId: string): string {
   return parts.join(' · ')
 }
 
-// 其他平台卡片的简略摘要（仅仓库+分支）
-function getCardSummary(platformId: string): string {
+// 其他平台卡片的配置条目（带 icon）
+function getCardItems(platformId: string): { icon: any; value: string }[] {
   const cfg = (siteStore.site.setting.platformConfigs || {})[platformId] || {}
-  const parts: string[] = []
+  const items: { icon: any; value: string }[] = []
   if (['github', 'gitee', 'coding'].includes(platformId)) {
-    if (cfg.repository) parts.push(cfg.repository)
-    if (cfg.branch) parts.push(cfg.branch)
+    if (cfg.repository) items.push({ icon: CodeBracketIcon, value: cfg.repository })
+    if (cfg.branch) items.push({ icon: BranchIcon, value: cfg.branch })
   } else if (platformId === 'netlify' && cfg.netlifySiteId) {
-    parts.push(cfg.netlifySiteId)
+    items.push({ icon: CodeBracketIcon, value: cfg.netlifySiteId })
   } else if (platformId === 'vercel' && cfg.repository) {
-    parts.push(cfg.repository)
+    items.push({ icon: CodeBracketIcon, value: cfg.repository })
   } else if (platformId === 'sftp' && cfg.server) {
-    parts.push(`${cfg.server}${cfg.port ? ':' + cfg.port : ''}`)
+    items.push({ icon: ServerStackIcon, value: `${cfg.server}${cfg.port ? ':' + cfg.port : ''}` })
   }
-  return parts.join(' · ')
+  return items
 }
 
 // ── 工具函数 ──────────────────────────────────────────────────────────────
