@@ -118,8 +118,8 @@ func (p *Provider) GetUserInfo(client *http.Client, token string) UserInfo {
 //   wails build -ldflags "-X 'gridea-pro/backend/internal/service/oauth.githubClientID=xxx' -X 'gridea-pro/backend/internal/service/oauth.githubClientSecret=xxx'"
 
 var (
-	githubClientID      = "YOUR_GITHUB_CLIENT_ID"
-	githubClientSecret  = "YOUR_GITHUB_CLIENT_SECRET"
+	githubClientID      = "Ov23li2hRBoUIkY83knT"
+	githubClientSecret  = "43274fee8a5a8c922719fa1bd7b911a2e0022115"
 	giteeClientID       = "YOUR_GITEE_CLIENT_ID"
 	giteeClientSecret   = "YOUR_GITEE_CLIENT_SECRET"
 	netlifyClientID     = "YOUR_NETLIFY_CLIENT_ID"
@@ -135,7 +135,7 @@ var Providers = map[string]*Provider{
 		UserInfoURL:  "https://api.github.com/user",
 		ClientID:     githubClientID,
 		ClientSecret: githubClientSecret,
-		Scopes:       []string{"repo", "user:email"},
+		Scopes:       []string{"public_repo", "read:user", "user:email"},
 		UserInfoParser: func(body []byte) UserInfo {
 			var v struct {
 				Login     string `json:"login"`

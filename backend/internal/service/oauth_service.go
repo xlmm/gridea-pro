@@ -239,6 +239,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 			"provider":  providerID,
 			"username":  userInfo.Username,
 			"avatarUrl": userInfo.AvatarURL,
+			"email":     userInfo.Email,
 		})
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

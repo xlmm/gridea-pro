@@ -481,17 +481,20 @@ onMounted(async () => {
   await loadStatuses()
 
   // 监听 OAuth 授权结果
-  EventsOn('oauth:success', (data: any) => {
-    const { provider, username, avatarUrl } = data
+  EventsOn('oauth:success', async (data: any) => {
+    const { provider, username, avatarUrl, email } = data
     oauthLoading.value[provider] = false
     statuses.value[provider] = {
       connected: true,
       connectedVia: 'oauth',
       username,
       avatarUrl,
-      email: '',
+      email: email || '',
     }
     toast.success(`${getPlatformName(provider)} ${t('settings.network.authSuccess')}`)
+
+    // 自动填充默认配置并保存
+    await autoFillAfterOAuth(provider, username, email || '')
   })
 
   EventsOn('oauth:error', (data: any) => {
@@ -646,6 +649,43 @@ async function saveDrawer() {
     toast.error(e?.message || t('settings.network.saveFailed'))
   } finally {
     saveLoading.value = false
+  }
+}
+
+// OAuth 成功后自动填充默认配置
+async function autoFillAfterOAuth(platformId: string, username: string, email: string) {
+  const existingConfigs = JSON.parse(JSON.stringify(siteStore.site.setting.platformConfigs || {}))
+  const cfg = existingConfigs[platformId] || {}
+
+  if (platformId === 'github') {
+    if (!cfg.repository) cfg.repository = `${username}/${username}.github.io`
+    if (!cfg.branch) cfg.branch = 'main'
+    if (!cfg.username) cfg.username = username
+    if (!cfg.email && email) cfg.email = email
+    if (!cfg.domain) cfg.domain = `https://${username}.github.io`
+  } else if (platformId === 'gitee') {
+    if (!cfg.repository) cfg.repository = `${username}/${username}`
+    if (!cfg.branch) cfg.branch = 'master'
+    if (!cfg.username) cfg.username = username
+    if (!cfg.email && email) cfg.email = email
+    if (!cfg.domain) cfg.domain = `https://${username}.gitee.io`
+  } else if (platformId === 'netlify') {
+    // Netlify 无法自动推断 site id，仅填充已知信息
+  }
+
+  existingConfigs[platformId] = cfg
+
+  try {
+    const settingObj = new domain.Setting({
+      platform: activePlatform.value,
+      platformConfigs: existingConfigs,
+      proxyEnabled: siteStore.site.setting.proxyEnabled || false,
+      proxyURL: siteStore.site.setting.proxyURL || '',
+    })
+    await SaveSettingFromFrontend(settingObj)
+    EventsEmit('app-site-reload')
+  } catch (e) {
+    console.error('自动填充配置失败', e)
   }
 }
 
