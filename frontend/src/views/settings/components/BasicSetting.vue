@@ -253,8 +253,7 @@
               <FormField :label="t('settings.network.repository')">
                 <div class="relative">
                   <CodeBracketIcon class="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/60" />
-                  <Input v-model="drawerForm.repository" class="pl-8" placeholder="repo-name"
-                    @update:model-value="onRepositoryChange" />
+                  <Input v-model="drawerForm.repository" class="pl-8" placeholder="repo-name" />
                 </div>
               </FormField>
               <FormField :label="t('settings.network.branch')">
@@ -445,7 +444,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSiteStore } from '@/stores/site'
 import { toast } from '@/helpers/toast'
@@ -558,6 +557,13 @@ const activeConfigItems = computed(() => {
   }
 
   return items
+})
+
+// 仓库名称 → 域名联动
+watch(() => drawerForm.repository, (val) => {
+  if (!val || !['github', 'gitee'].includes(drawerPlatform.value)) return
+  const suffix = drawerPlatform.value === 'github' ? '.github.io' : '.gitee.io'
+  drawerForm.domain = val.endsWith(suffix) ? val : val + suffix
 })
 
 // ── 生命周期 ──────────────────────────────────────────────────────────────
@@ -692,21 +698,6 @@ function loadDrawerForm(platformId: string) {
   const setting = siteStore.site.setting
   drawerForm.proxyEnabled = setting.proxyEnabled || false
   drawerForm.proxyURL = setting.proxyURL || ''
-}
-
-// 输入仓库名称后自动联动填写域名
-function onRepositoryChange(val: string) {
-  drawerForm.repository = val
-  if (['github', 'gitee'].includes(drawerPlatform.value) && val) {
-    // 仓库名即为域名的子域（如 repo.github.io）
-    const suffix = drawerPlatform.value === 'github' ? '.github.io' : '.gitee.io'
-    // 如果仓库名本身就是 xxx.github.io 格式，直接用
-    if (val.endsWith(suffix)) {
-      drawerForm.domain = val
-    } else {
-      drawerForm.domain = val + suffix
-    }
-  }
 }
 
 function handleProtocolChange(v: string) {
