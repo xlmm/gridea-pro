@@ -116,6 +116,7 @@ export const useSiteStore = defineStore('site', () => {
   const themes = ref<ThemeInfo[]>([])
   const setting = ref<ISetting>({ ...defaultSetting })
   const commentSetting = ref<ICommentSetting>({ ...defaultCommentSetting })
+  const platformStatuses = ref<Record<string, any>>({})
 
   // Getters
   /** 获取当前平台的指定配置项 */
@@ -261,6 +262,7 @@ export const useSiteStore = defineStore('site', () => {
     themes,
     setting,
     commentSetting,
+    platformStatuses,
     // Getters
     site,
     currentDomain,
