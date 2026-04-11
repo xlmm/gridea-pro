@@ -28,9 +28,9 @@ type PlatformStatus struct {
 
 // OAuthService 处理平台授权与凭证管理
 type OAuthService struct {
-	credService *credential.Service
-	configMgr   *config.ConfigManager
-	mu          sync.Mutex
+	credService  *credential.Service
+	configMgr    *config.ConfigManager
+	mu           sync.Mutex
 	activeServer *http.Server
 }
 
@@ -201,7 +201,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		errParam := r.URL.Query().Get("error")
 		if errParam != "" {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprint(w, oauthResultHTML(false, errParam, "", ""))
+			fmt.Fprint(w, oauthResultHTML(false, providerID, errParam, "", ""))
 			runtime.EventsEmit(ctx, "oauth:error", map[string]string{"provider": providerID, "error": errParam})
 			return
 		}
@@ -209,7 +209,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		code := r.URL.Query().Get("code")
 		state := r.URL.Query().Get("state")
 		if state != expectedState {
-			fmt.Fprint(w, oauthResultHTML(false, "state 验证失败，请重新授权", "", ""))
+			fmt.Fprint(w, oauthResultHTML(false, providerID, "state 验证失败，请重新授权", "", ""))
 			return
 		}
 
@@ -217,7 +217,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		tokenResp, err := p.ExchangeCode(client, code, redirectURI)
 		if err != nil {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			fmt.Fprint(w, oauthResultHTML(false, err.Error(), "", ""))
+			fmt.Fprint(w, oauthResultHTML(false, providerID, err.Error(), "", ""))
 			runtime.EventsEmit(ctx, "oauth:error", map[string]string{"provider": providerID, "error": err.Error()})
 			return
 		}
@@ -225,7 +225,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		// 存入 Keychain
 		credKey := providerID + ":" + primaryCredField(providerID)
 		if err := s.credService.Set(credKey, tokenResp.AccessToken); err != nil {
-			fmt.Fprint(w, oauthResultHTML(false, "存储凭证失败: "+err.Error(), "", ""))
+			fmt.Fprint(w, oauthResultHTML(false, providerID, "存储凭证失败: "+err.Error(), "", ""))
 			return
 		}
 
@@ -249,7 +249,7 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		})
 
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprint(w, oauthResultHTML(true, "", userInfo.Username, userInfo.AvatarURL))
+		fmt.Fprint(w, oauthResultHTML(true, providerID, "", userInfo.Username, userInfo.AvatarURL))
 	})
 
 	server.Serve(listener)
@@ -292,7 +292,20 @@ func generateOAuthState() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func oauthResultHTML(success bool, errMsg, username, avatarURL string) string {
+var platformDisplayNames = map[string]string{
+	"github":  "GitHub",
+	"gitee":   "Gitee",
+	"netlify": "Netlify",
+	"vercel":  "Vercel",
+	"coding":  "Coding",
+	"sftp":    "SFTP",
+}
+
+func oauthResultHTML(success bool, providerID, errMsg, username, avatarURL string) string {
+	platformName := platformDisplayNames[providerID]
+	if platformName == "" {
+		platformName = providerID
+	}
 	const pageStyle = `*{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#000}
 .card{text-align:center;padding:48px 56px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:24px;backdrop-filter:blur(20px);max-width:420px;width:100%}
@@ -313,7 +326,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sa
 .footer{font-size:11px;color:rgba(255,255,255,.2)}`
 
 	// Gridea Pro logo (base64 encoded small PNG placeholder — replace with actual logo URL in production)
-	const logoURL = "https://gridea.dev/gridea-logo.png"
+	const logoURL = "https://www.gridea.pro/gridea-pro.png"
 
 	if success {
 		name := username
@@ -331,7 +344,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sa
 <body><div class="card">
 <div class="brand"><img src="` + logoURL + `" alt="Gridea Pro" onerror="this.style.display='none'" /><div class="brand-name">Gridea Pro</div></div>
 <div class="status-icon ok"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
-<div class="title">授权成功</div>
+<div class="title">` + platformName + ` 授权成功</div>
 ` + userHTML + `
 <div class="hint">请返回 Gridea Pro 查看，可以关闭此标签页</div>
 <div class="divider"></div>
@@ -343,7 +356,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sa
 <body><div class="card">
 <div class="brand"><img src="` + logoURL + `" alt="Gridea Pro" onerror="this.style.display='none'" /><div class="brand-name">Gridea Pro</div></div>
 <div class="status-icon fail"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div>
-<div class="title">授权失败</div>
+<div class="title">` + platformName + ` 授权失败</div>
 <div class="err">` + errMsg + `</div>
 <div class="divider"></div>
 <div class="footer">Gridea Pro · 下一代桌面静态博客写作客户端</div>
