@@ -35,18 +35,41 @@
             <div class="text-xs text-muted-foreground mt-0.5">{{ activePlatformData.description }}</div>
           </div>
 
-          <!-- 已连接时的操作按钮 -->
-          <div v-if="activeStatus?.connected" class="flex items-center gap-2 flex-shrink-0">
-            <Button variant="outline" size="sm" class="h-8 text-xs rounded-full px-4 text-primary hover:bg-primary/10 hover:text-primary border-primary/20"
-              @click="openDrawer(activePlatformData.id)">
-              <Cog6ToothIcon class="size-3.5 mr-1.5" />
-              {{ t('settings.network.editConfig') }}
-            </Button>
-            <Button variant="ghost" size="sm"
-              class="h-8 text-xs rounded-full px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
-              @click="handleRevoke(activePlatformData.id)">
-              {{ t('settings.network.disconnect') }}
-            </Button>
+          <!-- 操作按钮（始终在右侧） -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <template v-if="activeStatus?.connected">
+              <Button variant="outline" size="sm" class="h-8 text-xs rounded-full px-4 text-primary hover:bg-primary/10 hover:text-primary border-primary/20"
+                @click="openDrawer(activePlatformData.id)">
+                <Cog6ToothIcon class="size-3.5 mr-1.5" />
+                {{ t('settings.network.editConfig') }}
+              </Button>
+              <Button variant="ghost" size="sm"
+                class="h-8 text-xs rounded-full px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+                @click="handleRevoke(activePlatformData.id)">
+                {{ t('settings.network.disconnect') }}
+              </Button>
+            </template>
+            <template v-else>
+              <template v-if="activePlatformData.hasOAuth">
+                <Button v-if="!oauthLoading[activePlatformData.id]"
+                  variant="default" size="sm" class="h-8 text-xs rounded-full px-4 bg-primary text-background hover:bg-primary/90"
+                  @click="handleOAuth(activePlatformData.id)">
+                  <KeyIcon class="size-3.5 mr-1.5" />
+                  {{ t('settings.network.connectViaOAuth') }}
+                </Button>
+                <Button v-else
+                  variant="default" size="sm" class="h-8 text-xs rounded-full px-4" disabled>
+                  <ArrowPathIcon class="size-3.5 animate-spin mr-1.5" />
+                  {{ t('settings.network.waitingAuth') }}
+                </Button>
+              </template>
+              <Button variant="outline" size="sm"
+                class="h-8 text-xs rounded-full px-4 text-primary hover:bg-primary/10 hover:text-primary border-primary/20"
+                @click="openDrawer(activePlatformData.id)">
+                <Cog6ToothIcon class="size-3.5 mr-1.5" />
+                {{ t('settings.network.connectManual') }}
+              </Button>
+            </template>
           </div>
         </div>
 
@@ -54,7 +77,6 @@
         <div v-if="activeStatus?.connected"
           class="px-6 pb-5 -mt-1">
           <div class="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 bg-muted/40 rounded-lg">
-            <!-- 用户头像 + 用户名（可点击跳转主页） -->
             <a v-if="activeStatus?.username"
               class="flex items-center gap-2 text-xs cursor-pointer"
               @click="openUserProfile(activePlatformData.id, activeStatus.username)">
@@ -62,41 +84,11 @@
                 class="size-5 rounded-full flex-shrink-0" alt="" />
               <span class="font-semibold text-foreground hover:text-primary transition-colors">{{ activeStatus.username }}</span>
             </a>
-            <!-- 分隔点 -->
             <span v-if="activeStatus?.username && activeConfigItems.length > 0" class="text-muted-foreground/30">·</span>
             <div v-for="item in activeConfigItems" :key="item.value"
               class="flex items-center gap-1.5 text-xs text-muted-foreground">
               <component :is="item.icon" class="size-3.5 flex-shrink-0 opacity-50" />
               <span class="truncate max-w-[200px]">{{ item.value }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 未连接：连接方式 -->
-        <div v-if="!activeStatus?.connected" class="px-6 pb-5 -mt-1">
-          <div class="border-t border-border/40 pt-4">
-            <div class="flex items-center gap-3">
-              <!-- OAuth 授权（主要入口，支持 OAuth 的平台始终显示） -->
-              <template v-if="activePlatformData.hasOAuth">
-                <Button v-if="!oauthLoading[activePlatformData.id]"
-                  variant="default" size="sm" class="h-9 text-xs rounded-full px-5"
-                  @click="handleOAuth(activePlatformData.id)">
-                  <KeyIcon class="size-3.5 mr-1.5" />
-                  {{ t('settings.network.connectViaOAuth') }}
-                </Button>
-                <Button v-else
-                  variant="default" size="sm" class="h-9 text-xs rounded-full px-5" disabled>
-                  <ArrowPathIcon class="size-3.5 animate-spin mr-1.5" />
-                  {{ t('settings.network.waitingAuth') }}
-                </Button>
-              </template>
-              <!-- 手动配置（备选方案，有 OAuth 时为 outline，无 OAuth 时为 default） -->
-              <Button :variant="activePlatformData.hasOAuth ? 'outline' : 'default'"
-                size="sm" class="h-9 text-xs rounded-full px-5"
-                @click="openDrawer(activePlatformData.id)">
-                <Cog6ToothIcon class="size-3.5 mr-1.5" />
-                {{ t('settings.network.connectManual') }}
-              </Button>
             </div>
           </div>
         </div>
