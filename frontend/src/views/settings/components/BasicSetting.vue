@@ -561,9 +561,9 @@ const activeConfigItems = computed(() => {
 
 // 仓库名称 → 域名联动
 watch(() => drawerForm.repository, (val) => {
-  if (!val || !['github', 'gitee'].includes(drawerPlatform.value)) return
-  const suffix = drawerPlatform.value === 'github' ? '.github.io' : '.gitee.io'
-  drawerForm.domain = val.endsWith(suffix) ? val : val + suffix
+  if (['github', 'gitee', 'coding'].includes(drawerPlatform.value)) {
+    drawerForm.domain = val || ''
+  }
 })
 
 // ── 生命周期 ──────────────────────────────────────────────────────────────
