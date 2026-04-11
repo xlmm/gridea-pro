@@ -392,6 +392,8 @@
       "manualConfigTitle": "手动配置",
       "sftpNote": "SFTP 不支持 OAuth，凭证保存在系统密码管理器",
       "credentialSaved": "凭证已安全存储",
+      "disconnected": "已断开连接",
+      "disconnectFailed": "断开连接失败",
       "githubDesc": "部署到 GitHub Pages，免费托管静态博客",
       "netlifyDesc": "自动 CI/CD，支持自定义域名与 HTTPS",
       "vercelDesc": "边缘网络加速，前端部署首选",

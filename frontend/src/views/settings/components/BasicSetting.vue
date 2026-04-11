@@ -8,28 +8,27 @@
         {{ t('settings.network.currentPlatform') }}
       </h2>
       <div class="border border-primary/20 rounded-xl overflow-hidden">
-        <div class="flex items-center gap-6 px-6 py-5">
-          <!-- 图标 -->
-          <div class="size-12 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm"
+        <!-- 顶部：基本信息 + 操作 -->
+        <div class="flex items-center gap-5 px-6 py-5">
+          <div class="size-11 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm"
             :style="{ background: activePlatformData.color }">
-            <component :is="activePlatformData.icon" class="size-6" />
+            <component :is="activePlatformData.icon" class="size-5.5" />
           </div>
 
-          <!-- 名称 + 描述 -->
           <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2.5">
               <span class="text-base font-bold text-foreground">{{ activePlatformData.name }}</span>
               <!-- 状态 chip -->
-              <template v-if="statuses[activePlatformData.id]?.connected && statuses[activePlatformData.id]?.connectedVia === 'oauth'">
+              <template v-if="activeStatus?.connected && activeStatus?.connectedVia === 'oauth'">
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[11px] font-medium">
                   <span class="size-1.5 rounded-full bg-green-500 inline-block"></span>
-                  {{ statuses[activePlatformData.id].username || t('settings.network.connected') }}
+                  {{ activeStatus.username || t('settings.network.connected') }}
                 </span>
               </template>
-              <template v-else-if="statuses[activePlatformData.id]?.connected">
-                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-medium">
-                  <span class="size-1.5 rounded-full bg-amber-500 inline-block"></span>
-                  {{ t('settings.network.tokenSaved') }}
+              <template v-else-if="activeStatus?.connected">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[11px] font-medium">
+                  <span class="size-1.5 rounded-full bg-green-500 inline-block"></span>
+                  {{ t('settings.network.connected') }}
                 </span>
               </template>
               <template v-else>
@@ -39,41 +38,59 @@
                 </span>
               </template>
             </div>
-            <div class="text-xs text-muted-foreground mt-1">{{ activePlatformData.description }}</div>
+            <div class="text-xs text-muted-foreground mt-0.5">{{ activePlatformData.description }}</div>
           </div>
 
-          <!-- 操作按钮 -->
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <template v-if="statuses[activePlatformData.id]?.connected">
-              <Button variant="outline" size="sm" class="h-8 text-xs rounded-full px-4"
-                @click="openDrawer(activePlatformData.id)">
-                <Cog6ToothIcon class="size-3.5 mr-1.5" />
-                {{ t('settings.network.editConfig') }}
-              </Button>
-              <Button variant="ghost" size="sm"
-                class="h-8 text-xs rounded-full px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
-                @click="handleRevoke(activePlatformData.id)">
-                {{ t('settings.network.disconnect') }}
-              </Button>
-            </template>
-            <template v-else>
-              <Button v-if="activePlatformData.oauthAvailable && !oauthLoading[activePlatformData.id]"
-                variant="default" size="sm" class="h-8 text-xs rounded-full px-4"
+          <!-- 已连接时的操作按钮 -->
+          <div v-if="activeStatus?.connected" class="flex items-center gap-2 flex-shrink-0">
+            <Button variant="outline" size="sm" class="h-8 text-xs rounded-full px-4"
+              @click="openDrawer(activePlatformData.id)">
+              <Cog6ToothIcon class="size-3.5 mr-1.5" />
+              {{ t('settings.network.editConfig') }}
+            </Button>
+            <Button variant="ghost" size="sm"
+              class="h-8 text-xs rounded-full px-3 text-destructive hover:text-destructive hover:bg-destructive/10"
+              @click="handleRevoke(activePlatformData.id)">
+              {{ t('settings.network.disconnect') }}
+            </Button>
+          </div>
+        </div>
+
+        <!-- 已连接：配置信息展示 -->
+        <div v-if="activeStatus?.connected && activeConfigItems.length > 0"
+          class="px-6 pb-5 -mt-1">
+          <div class="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 bg-muted/40 rounded-lg">
+            <div v-for="item in activeConfigItems" :key="item.label"
+              class="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <component :is="item.icon" class="size-3.5 flex-shrink-0 opacity-60" />
+              <span class="text-foreground/70 font-medium">{{ item.label }}</span>
+              <span class="truncate max-w-[200px]">{{ item.value }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 未连接：连接方式 -->
+        <div v-if="!activeStatus?.connected" class="px-6 pb-5 -mt-1">
+          <div class="border-t border-border/40 pt-4">
+            <div class="flex items-center gap-3">
+              <Button v-if="oauthSupported[activePlatformData.id] && !oauthLoading[activePlatformData.id]"
+                variant="default" size="sm" class="h-9 text-xs rounded-full px-5"
                 @click="handleOAuth(activePlatformData.id)">
-                {{ t('settings.network.authorizeWith') }}
+                <KeyIcon class="size-3.5 mr-1.5" />
+                {{ t('settings.network.connectViaOAuth') }}
               </Button>
-              <Button v-if="activePlatformData.oauthAvailable && oauthLoading[activePlatformData.id]"
-                variant="default" size="sm" class="h-8 text-xs rounded-full px-4" disabled>
+              <Button v-if="oauthSupported[activePlatformData.id] && oauthLoading[activePlatformData.id]"
+                variant="default" size="sm" class="h-9 text-xs rounded-full px-5" disabled>
                 <ArrowPathIcon class="size-3.5 animate-spin mr-1.5" />
                 {{ t('settings.network.waitingAuth') }}
               </Button>
-              <Button :variant="activePlatformData.oauthAvailable ? 'outline' : 'default'"
-                size="sm" class="h-8 text-xs rounded-full px-4"
+              <Button :variant="oauthSupported[activePlatformData.id] ? 'outline' : 'default'"
+                size="sm" class="h-9 text-xs rounded-full px-5"
                 @click="openDrawer(activePlatformData.id)">
                 <Cog6ToothIcon class="size-3.5 mr-1.5" />
-                {{ t('settings.network.configure') }}
+                {{ t('settings.network.connectManual') }}
               </Button>
-            </template>
+            </div>
           </div>
         </div>
       </div>
@@ -89,29 +106,27 @@
           class="group flex flex-col p-4 rounded-xl relative transition-all duration-200 bg-primary/2 border border-primary/20 hover:bg-primary/5 hover:shadow-xs hover:-translate-y-0.5">
 
           <!-- 顶部：图标 + 名称 -->
-          <div class="flex items-start gap-3 mb-3">
+          <div class="flex items-start gap-3 mb-2">
             <div class="size-9 rounded-xl flex items-center justify-center text-white flex-shrink-0 shadow-sm"
               :style="{ background: p.color }">
               <component :is="p.icon" class="size-4.5" />
             </div>
             <div class="flex-1 min-w-0 pt-0.5">
               <div class="text-sm font-semibold text-foreground leading-tight">{{ p.name }}</div>
-              <div class="text-xs text-muted-foreground mt-0.5 line-clamp-2">{{ p.description }}</div>
+              <div class="text-xs text-muted-foreground mt-0.5 line-clamp-1">{{ p.description }}</div>
             </div>
           </div>
 
-          <!-- 状态 chip -->
-          <div class="mb-3">
-            <template v-if="statuses[p.id]?.connected && statuses[p.id]?.connectedVia === 'oauth'">
+          <!-- 状态 + 配置摘要 -->
+          <div class="mb-3 space-y-1.5">
+            <template v-if="statuses[p.id]?.connected">
               <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-[11px] font-medium">
                 <span class="size-1.5 rounded-full bg-green-500 inline-block"></span>
                 {{ statuses[p.id].username || t('settings.network.connected') }}
               </div>
-            </template>
-            <template v-else-if="statuses[p.id]?.connected">
-              <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-medium">
-                <span class="size-1.5 rounded-full bg-amber-500 inline-block"></span>
-                {{ t('settings.network.tokenSaved') }}
+              <!-- 配置摘要 -->
+              <div v-if="getConfigSummary(p.id)" class="text-[11px] text-muted-foreground truncate pl-0.5">
+                {{ getConfigSummary(p.id) }}
               </div>
             </template>
             <template v-else>
@@ -124,23 +139,18 @@
 
           <!-- 底部操作 -->
           <div class="flex items-center justify-between mt-auto pt-2.5 border-t border-border/50">
-            <!-- 配置入口 -->
             <button
               class="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors cursor-pointer"
               :title="t('settings.network.configure')"
               @click.stop="openDrawer(p.id)">
               <Cog6ToothIcon class="size-3.5" />
             </button>
-
-            <!-- 操作按钮 -->
-            <div class="flex items-center gap-1">
-              <Button
-                size="sm" variant="secondary"
-                class="h-7 text-[10px] rounded-full px-3 bg-primary/5 border border-primary/10 text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer"
-                @click.stop="setActive(p.id)">
-                {{ t('settings.network.setAsActive') }}
-              </Button>
-            </div>
+            <Button
+              size="sm" variant="secondary"
+              class="h-7 text-[10px] rounded-full px-3 bg-primary/5 border border-primary/10 text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer"
+              @click.stop="setActive(p.id)">
+              {{ t('settings.network.setAsActive') }}
+            </Button>
           </div>
         </div>
       </div>
@@ -151,9 +161,7 @@
     <!-- ── 手动配置抽屉 ───────────────────────────────────────── -->
     <Transition name="drawer">
       <div v-if="drawerOpen" class="fixed inset-0 z-50 flex justify-end" @click.self="closeDrawer">
-        <!-- 遮罩 -->
         <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]" @click="closeDrawer" />
-        <!-- 抽屉面板 -->
         <div class="relative w-[420px] h-full bg-background border-l border-border shadow-2xl flex flex-col overflow-hidden">
           <!-- 抽屉头部 -->
           <div class="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
@@ -208,7 +216,7 @@
                   :placeholder="hasExistingCredential(drawerPlatform, 'token') ? t('settings.network.tokenPlaceholder') : ''" />
               </FormField>
               <FormField label="CNAME">
-                <Input v-model="drawerForm.cname" placeholder="mydomain.com（可选）" />
+                <Input v-model="drawerForm.cname" placeholder="mydomain.com" />
               </FormField>
             </template>
 
@@ -247,7 +255,7 @@
                 <template #hint>{{ t('settings.network.vercelTokenDesc') }}</template>
               </FormField>
               <FormField :label="t('settings.network.customDomain')">
-                <Input v-model="drawerForm.cname" placeholder="mydomain.com（可选）" />
+                <Input v-model="drawerForm.cname" placeholder="mydomain.com" />
                 <template #hint>{{ t('settings.network.vercelDomainTip') }}</template>
               </FormField>
             </template>
@@ -355,18 +363,18 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSiteStore } from '@/stores/site'
 import { toast } from '@/helpers/toast'
-import { FolderOpenIcon, Cog6ToothIcon, ArrowPathIcon, XMarkIcon, InformationCircleIcon } from '@heroicons/vue/24/outline'
+import { FolderOpenIcon, Cog6ToothIcon, ArrowPathIcon, XMarkIcon, InformationCircleIcon, KeyIcon, GlobeAltIcon, CodeBracketIcon, ServerStackIcon } from '@heroicons/vue/24/outline'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { EventsEmit, EventsOn, EventsOff } from '@/wailsjs/runtime'
+import { EventsEmit, EventsOn } from '@/wailsjs/runtime'
 import { SaveSettingFromFrontend, RemoteDetectFromFrontend } from '@/wailsjs/go/facade/SettingFacade'
-import { GetAllStatuses, StartOAuthFlow, RevokeToken, HasCredential } from '@/wailsjs/go/facade/OAuthFacade'
+import { GetAllStatuses, StartOAuthFlow, RevokeToken, HasCredential, IsOAuthAvailable } from '@/wailsjs/go/facade/OAuthFacade'
 import { OpenKeyFileDialog } from '@/wailsjs/go/app/App'
 import { domain } from '@/wailsjs/go/models'
 import type { service } from '@/wailsjs/go/models'
@@ -376,25 +384,26 @@ const siteStore = useSiteStore()
 
 // ── 平台定义 ──────────────────────────────────────────────────────────────
 
-// 简单 SVG 图标组件（内联，避免额外依赖）
 const GitHubIcon = { template: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>` }
 const VercelIcon = { template: `<svg viewBox="0 0 512 512" fill="currentColor"><path d="M256 48L496 464H16L256 48z"/></svg>` }
 const GenericIcon = { template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>` }
 const ServerIcon = { template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/><rect x="2" y="17" width="20" height="5" rx="1"/><circle cx="6" cy="5.5" r=".8" fill="currentColor"/><circle cx="6" cy="12.5" r=".8" fill="currentColor"/></svg>` }
+const BranchIcon = { template: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>` }
 
 const platforms = [
-  { id: 'github',  name: 'GitHub Pages',    color: '#24292f', icon: GitHubIcon,  oauthAvailable: false, description: t('settings.network.githubDesc') },
-  { id: 'netlify', name: 'Netlify',         color: '#00c7b7', icon: GenericIcon, oauthAvailable: false, description: t('settings.network.netlifyDesc') },
-  { id: 'vercel',  name: 'Vercel',          color: '#000000', icon: VercelIcon,  oauthAvailable: false, description: t('settings.network.vercelDesc') },
-  { id: 'gitee',   name: 'Gitee Pages',     color: '#c71d23', icon: GenericIcon, oauthAvailable: false, description: t('settings.network.giteeDesc') },
-  { id: 'coding',  name: 'Coding Pages',    color: '#0066ff', icon: GenericIcon, oauthAvailable: false, description: t('settings.network.codingDesc') },
-  { id: 'sftp',    name: 'SFTP / FTP',      color: '#5856d6', icon: ServerIcon,  oauthAvailable: false, description: t('settings.network.sftpDesc') },
+  { id: 'github',  name: 'GitHub Pages',  color: '#24292f', icon: GitHubIcon,  description: t('settings.network.githubDesc') },
+  { id: 'netlify', name: 'Netlify',       color: '#00c7b7', icon: GenericIcon, description: t('settings.network.netlifyDesc') },
+  { id: 'vercel',  name: 'Vercel',        color: '#000000', icon: VercelIcon,  description: t('settings.network.vercelDesc') },
+  { id: 'gitee',   name: 'Gitee Pages',   color: '#c71d23', icon: GenericIcon, description: t('settings.network.giteeDesc') },
+  { id: 'coding',  name: 'Coding Pages',  color: '#0066ff', icon: GenericIcon, description: t('settings.network.codingDesc') },
+  { id: 'sftp',    name: 'SFTP / FTP',    color: '#5856d6', icon: ServerIcon,  description: t('settings.network.sftpDesc') },
 ]
 
 // ── 状态 ──────────────────────────────────────────────────────────────────
 
 const statuses = ref<Record<string, service.PlatformStatus>>({})
 const oauthLoading = ref<Record<string, boolean>>({})
+const oauthSupported = ref<Record<string, boolean>>({})
 const activePlatform = ref('github')
 const detectLoading = ref(false)
 const saveLoading = ref(false)
@@ -430,6 +439,34 @@ const drawerForm = reactive<Record<string, any>>({
 const currentPlatform = computed(() => platforms.find(p => p.id === drawerPlatform.value))
 const activePlatformData = computed(() => platforms.find(p => p.id === activePlatform.value))
 const otherPlatforms = computed(() => platforms.filter(p => p.id !== activePlatform.value))
+const activeStatus = computed(() => statuses.value[activePlatform.value])
+
+// 当前平台的配置信息条目（用于展示）
+const activeConfigItems = computed(() => {
+  const pid = activePlatform.value
+  const cfg = (siteStore.site.setting.platformConfigs || {})[pid] || {}
+  const items: { icon: any; label: string; value: string }[] = []
+
+  // 域名
+  if (cfg.domain) {
+    const d = String(cfg.domain).replace(/^https?:\/\//, '')
+    if (d) items.push({ icon: GlobeAltIcon, label: t('settings.network.domain'), value: d })
+  }
+
+  if (['github', 'gitee', 'coding'].includes(pid)) {
+    if (cfg.repository) items.push({ icon: CodeBracketIcon, label: t('settings.network.repository'), value: cfg.repository })
+    if (cfg.branch) items.push({ icon: BranchIcon, label: t('settings.network.branch'), value: cfg.branch })
+  } else if (pid === 'netlify') {
+    if (cfg.netlifySiteId) items.push({ icon: CodeBracketIcon, label: 'Site ID', value: cfg.netlifySiteId })
+  } else if (pid === 'vercel') {
+    if (cfg.repository) items.push({ icon: CodeBracketIcon, label: t('settings.network.projectName'), value: cfg.repository })
+  } else if (pid === 'sftp') {
+    const addr = [cfg.server, cfg.port].filter(Boolean).join(':')
+    if (addr) items.push({ icon: ServerStackIcon, label: t('settings.network.server'), value: addr })
+  }
+
+  return items
+})
 
 // ── 生命周期 ──────────────────────────────────────────────────────────────
 
@@ -437,11 +474,11 @@ onMounted(async () => {
   const setting = siteStore.site.setting
   activePlatform.value = setting.platform || 'github'
 
-  // 加载各平台连接状态（从 Keychain）
-  await loadStatuses()
-
-  // 更新 OAuth 可用性
-  // await updateOAuthAvailability()  // 暂由 isOAuthAvailable 字段控制
+  // 并行加载状态和 OAuth 可用性
+  await Promise.all([
+    loadStatuses(),
+    loadOAuthAvailability(),
+  ])
 
   // 监听 OAuth 授权结果
   EventsOn('oauth:success', (data: any) => {
@@ -475,11 +512,25 @@ async function loadStatuses() {
   }
 }
 
+async function loadOAuthAvailability() {
+  const oauthPlatforms = ['github', 'gitee', 'netlify']
+  const results: Record<string, boolean> = {}
+  await Promise.all(
+    oauthPlatforms.map(async (pid) => {
+      try {
+        results[pid] = await IsOAuthAvailable(pid)
+      } catch {
+        results[pid] = false
+      }
+    })
+  )
+  oauthSupported.value = results
+}
+
 async function handleOAuth(platformId: string) {
   oauthLoading.value[platformId] = true
   try {
     await StartOAuthFlow(platformId)
-    // 等待 oauth:success 事件
   } catch (e: any) {
     oauthLoading.value[platformId] = false
     toast.error(e?.message || t('settings.network.authFailed'))
@@ -491,12 +542,9 @@ async function handleRevoke(platformId: string) {
   try {
     await RevokeToken(platformId)
     statuses.value[platformId] = { connected: false, connectedVia: '', username: '', avatarUrl: '', email: '' }
-    toast.success(`${getPlatformName(platformId)} 已断开连接`)
-    if (activePlatform.value === platformId) {
-      activePlatform.value = ''
-    }
+    toast.success(`${getPlatformName(platformId)} ${t('settings.network.disconnected')}`)
   } catch (e: any) {
-    toast.error(e?.message || '断开连接失败')
+    toast.error(e?.message || t('settings.network.disconnectFailed'))
   }
 }
 
@@ -536,12 +584,10 @@ function loadDrawerForm(platformId: string) {
   const platformConfigs = siteStore.site.setting.platformConfigs || {}
   const cfg = platformConfigs[platformId] || {}
 
-  // 重置
   Object.keys(drawerForm).forEach(k => { drawerForm[k] = '' })
   drawerForm.transferProtocol = 'sftp'
   drawerForm.port = platformId === 'sftp' ? '22' : ''
 
-  // 填入已保存的非敏感字段
   for (const [k, v] of Object.entries(cfg)) {
     if (k === 'domain') {
       const d = String(v || '')
@@ -552,12 +598,10 @@ function loadDrawerForm(platformId: string) {
     }
   }
 
-  // SFTP 认证类型
   if (platformId === 'sftp') {
     sftpAuthType.value = drawerForm.privateKey ? 'key' : 'password'
   }
 
-  // 加载代理设置
   const setting = siteStore.site.setting
   drawerForm.proxyEnabled = setting.proxyEnabled || false
   drawerForm.proxyURL = setting.proxyURL || ''
@@ -607,8 +651,6 @@ async function saveDrawer() {
     const settingDomain = new domain.Setting(setting)
     await SaveSettingFromFrontend(settingDomain)
     EventsEmit('app-site-reload')
-
-    // 更新状态显示
     await loadStatuses()
     toast.success(t('settings.network.credentialSaved'))
     closeDrawer()
@@ -617,6 +659,25 @@ async function saveDrawer() {
   } finally {
     saveLoading.value = false
   }
+}
+
+// 获取平台配置摘要（用于其他平台卡片）
+function getConfigSummary(platformId: string): string {
+  const cfg = (siteStore.site.setting.platformConfigs || {})[platformId] || {}
+  const parts: string[] = []
+  if (cfg.domain) {
+    parts.push(String(cfg.domain).replace(/^https?:\/\//, ''))
+  }
+  if (['github', 'gitee', 'coding'].includes(platformId) && cfg.repository) {
+    parts.push(cfg.repository)
+  } else if (platformId === 'netlify' && cfg.netlifySiteId) {
+    parts.push(cfg.netlifySiteId)
+  } else if (platformId === 'vercel' && cfg.repository) {
+    parts.push(cfg.repository)
+  } else if (platformId === 'sftp' && cfg.server) {
+    parts.push(`${cfg.server}${cfg.port ? ':' + cfg.port : ''}`)
+  }
+  return parts.join(' · ')
 }
 
 // ── 工具函数 ──────────────────────────────────────────────────────────────
@@ -645,7 +706,6 @@ function buildSettingForPlatform(platformId: string) {
     }
   }
 
-  // SFTP: 清除未使用的认证字段
   if (platformId === 'sftp') {
     if (sftpAuthType.value === 'password') cfg.privateKey = ''
     else cfg.password = ''
@@ -668,7 +728,6 @@ function getPlatformName(id: string) {
 
 <!-- 小工具组件（行内定义，避免额外文件） -->
 <script lang="ts">
-// FormField 辅助组件
 export const FormField = {
   props: ['label', 'prefix'],
   template: `
@@ -685,7 +744,6 @@ export const FormField = {
   `
 }
 
-// PasswordInput 辅助组件
 export const PasswordInput = {
   props: ['modelValue', 'placeholder'],
   emits: ['update:modelValue'],
@@ -708,7 +766,6 @@ export const PasswordInput = {
 </script>
 
 <style scoped>
-/* 抽屉动画 */
 .drawer-enter-active,
 .drawer-leave-active {
   transition: opacity 0.2s ease;
