@@ -385,6 +385,7 @@
       "currentPlatform": "当前平台",
       "otherPlatforms": "其他平台",
       "waitingAuth": "等待授权...",
+      "authTimeout": "授权超时，请重试",
       "authSuccess": "授权成功",
       "authFailed": "授权失败",
       "revokeConfirm": "确定要断开连接吗？凭证将从本机删除。",

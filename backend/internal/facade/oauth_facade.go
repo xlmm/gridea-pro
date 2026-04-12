@@ -26,6 +26,11 @@ func (f *OAuthFacade) StartOAuthFlow(provider, lang string) error {
 	return f.service.StartOAuthFlow(ctx, provider, lang)
 }
 
+// CancelOAuthFlow 取消正在进行的 OAuth 流程
+func (f *OAuthFacade) CancelOAuthFlow() {
+	f.service.CancelOAuthFlow()
+}
+
 // RevokeToken 撤销指定平台的授权（清除 Keychain 凭证 + 连接元信息）
 func (f *OAuthFacade) RevokeToken(provider string) error {
 	ctx := WailsContext

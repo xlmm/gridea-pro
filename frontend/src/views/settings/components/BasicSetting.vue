@@ -69,7 +69,9 @@
                     <KeyIcon class="size-3.5 mr-1.5" />
                     {{ t('settings.network.connectViaOAuth') }}
                   </Button>
-                  <Button v-else variant="default" size="sm" class="h-8 text-xs rounded-full px-4" disabled>
+                  <Button v-else variant="default" size="sm"
+                    class="h-8 text-xs rounded-full px-4 bg-primary/80 text-background hover:bg-destructive"
+                    @click="handleCancelOAuth(activePlatformData.id)">
                     <ArrowPathIcon class="size-3.5 animate-spin mr-1.5" />
                     {{ t('settings.network.waitingAuth') }}
                   </Button>
@@ -90,7 +92,9 @@
                     <KeyIcon class="size-3.5 mr-1.5" />
                     {{ t('settings.network.connectViaOAuth') }}
                   </Button>
-                  <Button v-else variant="default" size="sm" class="h-8 text-xs rounded-full px-4" disabled>
+                  <Button v-else variant="default" size="sm"
+                    class="h-8 text-xs rounded-full px-4 bg-primary/80 text-background hover:bg-destructive"
+                    @click="handleCancelOAuth(activePlatformData.id)">
                     <ArrowPathIcon class="size-3.5 animate-spin mr-1.5" />
                     {{ t('settings.network.waitingAuth') }}
                   </Button>
@@ -482,7 +486,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { EventsEmit, EventsOn, BrowserOpenURL } from '@/wailsjs/runtime'
 import { SaveSettingFromFrontend, RemoteDetectFromFrontend } from '@/wailsjs/go/facade/SettingFacade'
-import { GetAllStatuses, StartOAuthFlow, RevokeToken, HasCredential } from '@/wailsjs/go/facade/OAuthFacade'
+import { GetAllStatuses, StartOAuthFlow, RevokeToken, HasCredential, CancelOAuthFlow } from '@/wailsjs/go/facade/OAuthFacade'
 import { OpenKeyFileDialog } from '@/wailsjs/go/app/App'
 import { domain } from '@/wailsjs/go/models'
 
@@ -619,6 +623,10 @@ onMounted(async () => {
   EventsOn('oauth:success', async (data: any) => {
     const { provider, username, avatarUrl, email } = data
     oauthLoading.value[provider] = false
+    if (oauthTimeouts.value[provider]) {
+      clearTimeout(oauthTimeouts.value[provider])
+      delete oauthTimeouts.value[provider]
+    }
     statuses.value[provider] = {
       connected: true,
       connectedVia: 'oauth',
@@ -635,6 +643,10 @@ onMounted(async () => {
   EventsOn('oauth:error', (data: any) => {
     const { provider, error } = data
     oauthLoading.value[provider] = false
+    if (oauthTimeouts.value[provider]) {
+      clearTimeout(oauthTimeouts.value[provider])
+      delete oauthTimeouts.value[provider]
+    }
     toast.error(`${t('settings.network.authFailed')}: ${error}`)
   })
 })
@@ -650,15 +662,39 @@ async function loadStatuses() {
   }
 }
 
+const oauthTimeouts = ref<Record<string, any>>({})
+
 async function handleOAuth(platformId: string) {
   oauthLoading.value[platformId] = true
+  // 60 秒超时自动取消
+  if (oauthTimeouts.value[platformId]) clearTimeout(oauthTimeouts.value[platformId])
+  oauthTimeouts.value[platformId] = setTimeout(() => {
+    if (oauthLoading.value[platformId]) {
+      handleCancelOAuth(platformId)
+      toast.info(t('settings.network.authTimeout'))
+    }
+  }, 60000)
+
   try {
     await StartOAuthFlow(platformId, locale.value)
   } catch (e: any) {
     oauthLoading.value[platformId] = false
-    // Wails 返回的错误是字符串，不是 Error 对象
+    clearTimeout(oauthTimeouts.value[platformId])
     const msg = typeof e === 'string' ? e : (e?.message || t('settings.network.authFailed'))
     toast.error(msg)
+  }
+}
+
+async function handleCancelOAuth(platformId: string) {
+  try {
+    await CancelOAuthFlow()
+  } catch (e) {
+    // ignore
+  }
+  oauthLoading.value[platformId] = false
+  if (oauthTimeouts.value[platformId]) {
+    clearTimeout(oauthTimeouts.value[platformId])
+    delete oauthTimeouts.value[platformId]
   }
 }
 

@@ -73,6 +73,16 @@ func (s *OAuthService) StartOAuthFlow(ctx context.Context, providerID, lang stri
 	return nil
 }
 
+// CancelOAuthFlow 取消正在进行的 OAuth 流程（关闭本地回调服务器）
+func (s *OAuthService) CancelOAuthFlow() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.activeServer != nil {
+		s.activeServer.Close()
+		s.activeServer = nil
+	}
+}
+
 // RevokeToken 撤销平台授权（删除 Keychain 中的凭证 + 清除 meta 信息）
 func (s *OAuthService) RevokeToken(ctx context.Context, providerID string) error {
 	fields := getAllCredentialFields(providerID)
