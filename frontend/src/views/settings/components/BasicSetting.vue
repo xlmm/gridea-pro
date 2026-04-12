@@ -485,7 +485,15 @@ import { SaveSettingFromFrontend, RemoteDetectFromFrontend } from '@/wailsjs/go/
 import { GetAllStatuses, StartOAuthFlow, RevokeToken, HasCredential } from '@/wailsjs/go/facade/OAuthFacade'
 import { OpenKeyFileDialog } from '@/wailsjs/go/app/App'
 import { domain } from '@/wailsjs/go/models'
-import type { service } from '@/wailsjs/go/models'
+
+// 本地类型定义（避免依赖 wails 自动生成的 models.ts 中可能被覆盖的 service namespace）
+interface PlatformStatus {
+  connected: boolean
+  connectedVia: string
+  username: string
+  avatarUrl: string
+  email: string
+}
 
 const { t, locale } = useI18n()
 const siteStore = useSiteStore()
@@ -513,7 +521,7 @@ const platforms = computed(() => [
 // ── 状态 ──────────────────────────────────────────────────────────────────
 
 const statuses = computed({
-  get: () => siteStore.platformStatuses as Record<string, service.PlatformStatus>,
+  get: () => siteStore.platformStatuses as Record<string, PlatformStatus>,
   set: (val) => { siteStore.platformStatuses = val }
 })
 const oauthLoading = ref<Record<string, boolean>>({})
