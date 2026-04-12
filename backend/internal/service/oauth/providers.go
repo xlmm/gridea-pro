@@ -34,7 +34,10 @@ type Provider struct {
 	Scopes         []string
 	// FixedPort 某些平台（如 Gitee）要求回调地址与注册时完全匹配，
 	// 不允许随机端口，此时使用固定端口
-	FixedPort      int
+	FixedPort int
+	// EmailURL 某些平台（如 Gitee）需要单独调用接口获取邮箱
+	EmailURL     string
+	EmailParser  func(body []byte) string
 	UserInfoParser func(body []byte) UserInfo
 }
 
@@ -107,7 +110,24 @@ func (p *Provider) GetUserInfo(client *http.Client, token string) UserInfo {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	return p.UserInfoParser(body)
+	info := p.UserInfoParser(body)
+
+	// 如果用户信息没有 email 且提供商有单独的 email 接口，再调一次
+	if info.Email == "" && p.EmailURL != "" && p.EmailParser != nil {
+		emailReq, err := http.NewRequest(http.MethodGet, p.EmailURL, nil)
+		if err == nil {
+			emailReq.Header.Set("Authorization", "Bearer "+token)
+			emailReq.Header.Set("Accept", "application/json")
+			emailReq.Header.Set("User-Agent", "Gridea-Pro")
+			emailResp, err := client.Do(emailReq)
+			if err == nil {
+				defer emailResp.Body.Close()
+				emailBody, _ := io.ReadAll(emailResp.Body)
+				info.Email = p.EmailParser(emailBody)
+			}
+		}
+	}
+	return info
 }
 
 // ─── Provider Registry ─────────────────────────────────────────────────────
@@ -154,11 +174,11 @@ var Providers = map[string]*Provider{
 		AuthURL:      "https://gitee.com/oauth/authorize",
 		TokenURL:     "https://gitee.com/oauth/token",
 		UserInfoURL:  "https://gitee.com/api/v5/user",
+		EmailURL:     "https://gitee.com/api/v5/emails",
 		ClientID:     giteeClientID,
 		ClientSecret: giteeClientSecret,
 		Scopes:       []string{"projects", "user_info", "emails"},
 		FixedPort:    53682, // Gitee 要求回调地址完全匹配，使用固定端口
-
 		UserInfoParser: func(body []byte) UserInfo {
 			var v struct {
 				Login     string `json:"login"`
@@ -167,6 +187,30 @@ var Providers = map[string]*Provider{
 			}
 			json.Unmarshal(body, &v)
 			return UserInfo{Username: v.Login, AvatarURL: v.AvatarURL, Email: v.Email}
+		},
+		EmailParser: func(body []byte) string {
+			// Gitee /api/v5/emails 返回数组，优先返回 primary email
+			var emails []struct {
+				Email string   `json:"email"`
+				State string   `json:"state"`
+				Scope []string `json:"scope"`
+			}
+			if err := json.Unmarshal(body, &emails); err != nil {
+				return ""
+			}
+			// 优先 primary
+			for _, e := range emails {
+				for _, s := range e.Scope {
+					if s == "primary" {
+						return e.Email
+					}
+				}
+			}
+			// 退而求其次返回第一个
+			if len(emails) > 0 {
+				return emails[0].Email
+			}
+			return ""
 		},
 	},
 	"netlify": {
