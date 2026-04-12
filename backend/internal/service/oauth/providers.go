@@ -36,9 +36,12 @@ type Provider struct {
 	// 不允许随机端口，此时使用固定端口
 	FixedPort int
 	// EmailURL 某些平台（如 Gitee）需要单独调用接口获取邮箱
-	EmailURL     string
-	EmailParser  func(body []byte) string
+	EmailURL       string
+	EmailParser    func(body []byte) string
 	UserInfoParser func(body []byte) UserInfo
+	// EnsureDefaultRepo 确保用户的默认部署仓库存在（不存在则创建，已存在则跳过）
+	// 返回默认仓库名，或错误（不影响授权流程）
+	EnsureDefaultRepo func(client *http.Client, token, username string) (repoName string, err error)
 }
 
 // BuildAuthURL 构建授权 URL
@@ -168,6 +171,7 @@ var Providers = map[string]*Provider{
 			json.Unmarshal(body, &v)
 			return UserInfo{Username: v.Login, AvatarURL: v.AvatarURL, Email: v.Email}
 		},
+		EnsureDefaultRepo: ensureGitHubRepo,
 	},
 	"gitee": {
 		ID:           "gitee",
@@ -212,6 +216,7 @@ var Providers = map[string]*Provider{
 			}
 			return ""
 		},
+		EnsureDefaultRepo: ensureGiteeRepo,
 	},
 	"netlify": {
 		ID:           "netlify",

@@ -247,6 +247,14 @@ func (s *OAuthService) runCallbackServer(ctx context.Context, listener net.Liste
 		// 获取用户信息
 		userInfo := p.GetUserInfo(client, tokenResp.AccessToken)
 
+		// 确保默认部署仓库存在（不存在则创建，已存在则跳过，绝不覆盖）
+		if p.EnsureDefaultRepo != nil && userInfo.Username != "" {
+			if _, err := p.EnsureDefaultRepo(client, tokenResp.AccessToken, userInfo.Username); err != nil {
+				// 仓库创建失败不阻断授权流程，仅记录日志
+				fmt.Printf("[OAuth] EnsureDefaultRepo for %s failed: %v\n", providerID, err)
+			}
+		}
+
 		// 保存 meta
 		_ = s.configMgr.SavePlatformMeta(providerID, config.PlatformMeta{
 			ConnectedVia: "oauth",
