@@ -154,8 +154,8 @@ var (
 	githubClientSecret  = "43274fee8a5a8c922719fa1bd7b911a2e0022115"
 	giteeClientID       = "d10d5bebeb569e48ab8b128e5151c8f67a24fb110498898ccb58eb34a6995d56"
 	giteeClientSecret   = "dde3869c9c89edabb7b9a20b61044038c31fadeeacc2ca74565a218ba19209c8"
-	netlifyClientID     = "YOUR_NETLIFY_CLIENT_ID"
-	netlifyClientSecret = "YOUR_NETLIFY_CLIENT_SECRET"
+	netlifyClientID     = "SPW1yhDPBWamrHXkpjh602uoKcO0jOAhvRDuKYJ4XBA"
+	netlifyClientSecret = "U49gVdf4GnytSkjfxs_KyVUGtm6cgeUkso5pGLZt75I"
 	vercelClientID      = "oac_Dveh2ueHQLSym2UcJB1vRzXD"
 	vercelClientSecret  = "gECj7VpFOS7fmH7cHGoxC4L1"
 	// vercelIntegrationSlug 是在 Vercel Integration Console 创建时指定的 slug
@@ -236,6 +236,8 @@ var Providers = map[string]*Provider{
 		ClientID:     netlifyClientID,
 		ClientSecret: netlifyClientSecret,
 		Scopes:       []string{},
+		// Netlify 要求回调地址完全匹配，使用固定端口
+		FixedPort: 53684,
 		UserInfoParser: func(body []byte) UserInfo {
 			var v struct {
 				Email     string `json:"email"`
