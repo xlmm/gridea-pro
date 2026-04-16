@@ -74,11 +74,7 @@
         "previewServiceFailed": "Не удалось получить сервис предпросмотра",
         "selectLocalImage": "Нажмите, чтобы выбрать локальное изображение",
         "contextMenuTip": "Щёлкните правой кнопкой мыши в редакторе, чтобы открыть контекстное меню",
-        "editorPlaceholder": "Начните писать...",
-        "todayArticles": "Сегодня",
-        "monthArticles": "В этом месяце",
-        "allArticles": "Все статьи",
-        "allCategories": "Все категории"
+        "editorPlaceholder": "Начните писать..."
     },
     "tag": {
         "new": "Новый тег",
