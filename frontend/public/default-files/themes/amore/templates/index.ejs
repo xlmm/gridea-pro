@@ -27,12 +27,12 @@
                 <div class="main">
                     <div class="mod-index__logo">
                         <a href="/">
-                            <% if (site.customConfig.avatar) { %>
-                                <img class="mod-index__logo" alt="avatar" src="<%= site.customConfig.avatar %>">
-                                <% } else { %>
-                                    <img class="mod-index__logo" alt="avatar"
-                                        src="/media/images/avatar.jpg">
-                                    <% } %>
+                            <% var _logo = site.customConfig.siteLogo || site.customConfig.avatar; %>
+                            <% if (_logo) { %>
+                                <img class="mod-index__logo" alt="avatar" src="<%= _logo %>">
+                            <% } else { %>
+                                <img class="mod-index__logo" alt="avatar" src="/media/images/avatar.jpg">
+                            <% } %>
                         </a>
                     </div>
 
@@ -48,7 +48,7 @@
 
                             <div class="zuobiao">
                                 <i class="ico_map"></i>
-                                <%= site.customConfig.location || '中国 · 深圳' %>
+                                <%= site.customConfig.location || themeConfig.location || '中国 · 深圳' %>
                                     <span style="margin-left: 30px">
                                         <!-- Sun (Light Mode) -->
                                         <button id="theme-toggle-sun" class="tiptap-button theme-toggle-sun"
@@ -102,8 +102,8 @@
 
 
                             <div style=" line-height: 20px;font-size: 10pt;">
-                                <p>" <%= themeConfig.quoteText || '最顶级的人才喜欢一起工作，而且他们是不能容忍平庸作品的。' %> "</p>
-                                <p style="margin-left: 8rem;font-size: 8pt;">—— <%= themeConfig.quoteAuthor
+                                <p>" <%= site.customConfig.quoteText || '最顶级的人才喜欢一起工作，而且他们是不能容忍平庸作品的。' %> "</p>
+                                <p style="margin-left: 8rem;font-size: 8pt;">—— <%= site.customConfig.quoteAuthor
                                         || ' 史蒂夫·乔布斯' %>
                                 </p>
                             </div><br />
@@ -143,6 +143,10 @@
                 </div>
 
             </div>
+
+            <% if (site.customConfig.customJs) { %>
+            <%- '<script>' + site.customConfig.customJs + '<\/script>' %>
+            <% } %>
 
     </body>
 

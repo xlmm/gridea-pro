@@ -13,6 +13,10 @@
     {% block content %}{% endblock %}
 
     {% block scripts_extra %}{% endblock %}
+
+    {% if theme_config.customJs %}
+    <script>{{ theme_config.customJs|safe }}</script>
+    {% endif %}
 </body>
 
 </html>

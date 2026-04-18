@@ -23,8 +23,9 @@
     <div class="mod-head__left">
         <div class="mod-head__logo">
             <a href="/">
-                <% if (site.customConfig.avatar) { %>
-                    <img class="avatar" alt="avatar" src="<%= site.customConfig.avatar %>">
+                <% var _hdrLogo = site.customConfig.siteLogo || site.customConfig.avatar; %>
+                <% if (_hdrLogo) { %>
+                    <img class="avatar" alt="avatar" src="<%= _hdrLogo %>">
                 <% } else { %>
                     <img class="avatar" alt="avatar" src="/media/images/avatar.jpg">
                 <% } %>

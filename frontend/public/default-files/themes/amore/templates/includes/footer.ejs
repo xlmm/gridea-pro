@@ -19,3 +19,7 @@
             </a>
     </div>
 </footer>
+
+<% if (site.customConfig.customJs) { %>
+<%- '<script>' + site.customConfig.customJs + '<\/script>' %>
+<% } %>

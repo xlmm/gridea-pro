@@ -21,8 +21,7 @@
                 <li>
                     <a href="{{ friend.siteLink }}" target="_blank" title="{{ friend.description }}">
                         {% if friend.avatar %}
-                        <img src="{{ friend.avatar }}" alt="{{ friend.siteName }}"
-                            style="width: 32px; height: 32px; border-radius: 50%; vertical-align: middle; margin-right: 8px;">
+                        <img class="friend-avatar" src="{{ friend.avatar }}" alt="{{ friend.siteName }}">
                         {% endif %}
                         {{ friend.siteName }}
                     </a>
