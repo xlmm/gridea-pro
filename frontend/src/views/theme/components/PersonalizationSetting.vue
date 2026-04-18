@@ -123,7 +123,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-[180px_1fr] items-start gap-4">
+      <div v-if="form.feedEnabled" class="grid grid-cols-[180px_1fr] items-start gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground pt-2">{{ $t('article.feedFormat') }}</label>
         <div class="w-full max-w-sm">
           <Select :model-value="String(feedFullTextStr || '')" @update:model-value="(v: string) => feedFullTextStr = v">
@@ -138,7 +138,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-[180px_1fr] items-center gap-4">
+      <div v-if="form.feedEnabled" class="grid grid-cols-[180px_1fr] items-center gap-4">
         <label class="text-sm font-medium text-right text-muted-foreground">{{ $t('settings.basic.rssArticles')
           }}</label>
         <div class="max-w-sm flex items-center gap-4">
