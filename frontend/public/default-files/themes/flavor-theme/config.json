@@ -23,6 +23,13 @@
       "note": "推荐高度 36px，横向文字标识"
     },
     {
+      "name": "showHero",
+      "label": "显示 Hero 区域",
+      "group": "首页设置",
+      "type": "toggle",
+      "value": true
+    },
+    {
       "name": "heroTitle",
       "label": "Hero 标题",
       "group": "首页设置",
@@ -73,13 +80,6 @@
       ]
     },
     {
-      "name": "showHero",
-      "label": "显示 Hero 区域",
-      "group": "首页设置",
-      "type": "toggle",
-      "value": true
-    },
-    {
       "name": "defaultTheme",
       "label": "默认主题",
       "group": "外观设置",
@@ -102,8 +102,8 @@
       "label": "主题强调色",
       "group": "外观设置",
       "type": "input",
-      "value": "#16C47F",
-      "note": "默认墨绿色"
+      "value": "#FFFF00",
+      "note": "默认亮黄色"
     },
     {
       "name": "showSearch",

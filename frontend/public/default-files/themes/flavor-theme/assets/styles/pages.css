@@ -42,13 +42,20 @@
    ============================================================================ */
 
 
+.archive-list {
+  margin-top: 8px;
+}
+
 .archive-year {
   font-family: var(--font-heading);
-  font-size: 1.5rem;
-  font-weight: 400;
-  color: var(--color-text-primary);
-  margin-top: 40px;
-  margin-bottom: 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-top: 48px;
+  margin-bottom: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .archive-year:first-child {
@@ -58,31 +65,49 @@
 .archive-item {
   display: flex;
   align-items: baseline;
-  gap: 16px;
-  padding: 8px 0;
+  gap: 20px;
+  padding: 12px 0;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--color-border-light);
+  transition: color var(--transition-fast);
+}
+
+.archive-item:last-child {
+  border-bottom: none;
 }
 
 .archive-item__date {
   flex-shrink: 0;
+  width: 110px;
   font-size: 13px;
   color: var(--color-text-muted);
-  width: 80px;
   font-family: var(--font-body);
-}
-
-.archive-item__title {
-  font-size: 15px;
-  color: var(--color-text-body);
-}
-
-.archive-item__title a {
-  text-decoration: none;
-  color: inherit;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
   transition: color var(--transition-fast);
 }
 
-.archive-item__title a:hover {
-  color: var(--color-accent);
+.archive-item__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  color: var(--color-text-body);
+  line-height: 1.6;
+  transition: color var(--transition-fast);
+}
+
+.archive-item:hover .archive-item__title {
+  color: var(--color-text-primary);
+}
+
+.archive-item:hover .archive-item__date {
+  color: var(--color-text-secondary);
+}
+
+.archive-item .archive-item__badge {
+  flex-shrink: 0;
 }
 
 

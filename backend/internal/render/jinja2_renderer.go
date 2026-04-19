@@ -247,11 +247,12 @@ func (r *Jinja2Renderer) buildContext(data *template.TemplateData) pongo2.Contex
 		"theme_config": themeConfigValue,
 
 		// 内容数据
-		"post":  toContextValue(data.Post),
-		"posts": toContextValue(data.Posts),
-		"tags":  toContextValue(data.Tags),
-		"menus": toContextValue(data.Menus),
-		"memos": toContextValue(data.Memos),
+		"post":     toContextValue(data.Post),
+		"posts":    toContextValue(data.Posts),
+		"tags":     toContextValue(data.Tags),
+		"menus":    toContextValue(data.Menus),
+		"memos":    toContextValue(data.Memos),
+		"archives": toContextValue(data.Archives),
 
 		// 友链数据
 		"links": linksValue,

@@ -146,6 +146,10 @@ func (r *PageRenderer) renderPaginated(ctx context.Context, cfg paginatedRenderC
 		} else {
 			pageData.Posts = nil
 		}
+		// 如果 baseData 预置了按年归档（仅归档页）则按当前页的 posts 重建，避免每页都吐出全量
+		if len(cfg.baseData.Archives) > 0 {
+			pageData.Archives = buildArchivesByYear(pageData.Posts)
+		}
 		pageData.Pagination = buildPagination(page, totalPages, total, cfg.baseURL)
 
 		html, err := r.renderer.Render(cfg.templateName, &pageData)

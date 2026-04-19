@@ -11,14 +11,15 @@
 
   {% if posts|length > 0 %}
   <div class="archive-list">
-    {% for post in posts %}
-    <div class="archive-item">
-      <time class="archive-item__date meta-text">{{ post.date }}</time>
-      <a href="{{ post.link }}" class="archive-item__title">{{ post.title }}</a>
-      {% if post.isTop %}
-      <span class="archive-item__badge">置顶</span>
-      {% endif %}
-    </div>
+    {% for group in archives %}
+    <h2 class="archive-year">{{ group.Year }}</h2>
+    {% for post in group.Posts %}
+    <a href="{{ post.link }}" class="archive-item">
+      <time class="archive-item__date" datetime="{{ post.date }}">{{ post.dateFormat }}</time>
+      <span class="archive-item__title">{{ post.title }}</span>
+      {% if post.isTop %}<span class="archive-item__badge">置顶</span>{% endif %}
+    </a>
+    {% endfor %}
     {% endfor %}
   </div>
   {% else %}
