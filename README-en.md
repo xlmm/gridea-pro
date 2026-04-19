@@ -14,6 +14,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL%20v3.0-blue.svg" alt="License"></a>
   <a href="https://github.com/Gridea-Pro/gridea-pro/releases"><img src="https://img.shields.io/github/v/release/Gridea-Pro/gridea-pro?color=brightgreen" alt="Release"></a>
+  <a href="https://github.com/Gridea-Pro/gridea-pro/releases"><img src="https://img.shields.io/github/downloads/Gridea-Pro/gridea-pro/total?label=Downloads&color=orange" alt="Downloads"></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-brightgreen.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Go-1.22+-00ADD8.svg?logo=go&logoColor=white" alt="Go">
   <img src="https://img.shields.io/badge/Vue-3.x-4FC08D.svg?logo=vue.js&logoColor=white" alt="Vue 3">
@@ -290,6 +291,18 @@ git checkout -b feature/your-feature
 - [Pongo2](https://github.com/flosch/pongo2) — Jinja2-compatible template engine for Go
 - [KaTeX](https://katex.org/) — Math formula rendering
 - [Tailwind CSS](https://tailwindcss.com/) — CSS framework
+
+---
+
+## Star History
+
+<a href="https://www.star-history.com/#Gridea-Pro/gridea-pro&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Gridea-Pro/gridea-pro&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Gridea-Pro/gridea-pro&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Gridea-Pro/gridea-pro&type=Date" />
+  </picture>
+</a>
 
 ---
 
