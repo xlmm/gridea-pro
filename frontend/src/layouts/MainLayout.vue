@@ -504,10 +504,10 @@ const openUpdateDialog = () => {
   updateModalVisible.value = true
 }
 
-const checkUpdate = async ({ manual = false } = {}) => {
+const checkUpdate = async ({ manual = false, autoOpen = false } = {}) => {
   try {
     const info = await CheckUpdate()
-    applyUpdateInfo(info, { openDialog: manual, manual })
+    applyUpdateInfo(info, { openDialog: manual || autoOpen, manual })
   } catch (err) {
     console.error('[checkUpdate] failed:', err)
     if (manual) {
@@ -668,8 +668,8 @@ onMounted(() => {
   // Initial site load request
   EventsEmit('app-ready')
 
-  // 启动后尝试检查更新（失败静默，不打扰用户）
-  checkUpdate()
+  // 启动后尝试检查更新：有新版本且不是已跳过的版本时自动弹窗
+  checkUpdate({ autoOpen: true })
 
   // 初始化加载评论并开启全局轮询（用于更新侧边栏红点）
   commentStore.fetchComments()
