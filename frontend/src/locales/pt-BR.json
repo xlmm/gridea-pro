@@ -40,8 +40,7 @@
         "install": "Instalar agora",
         "restart": "Reiniciar",
         "retry": "Tentar novamente",
-        "readyToRestart": "Download concluído. Reinicie para aplicar a atualização.",
-        "mockApplied": "Atualização simulada aplicada (sem reinício real)"
+        "readyToRestart": "Download concluído. Reinicie para aplicar a atualização."
     },
     "article": {
         "new": "Novo",

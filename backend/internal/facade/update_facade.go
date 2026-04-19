@@ -30,7 +30,6 @@ type UpdateFacade struct {
 	downloadingFile *os.File // 用于取消时清理
 	readyPath       string   // 下载完成后的本地路径
 	readyAssetName  string   // asset 名（macOS 判定 .zip / .dmg 所需）
-	mockReady       bool     // 是否是 StartMockDownload 产生的假数据
 }
 
 // NewUpdateFacade 创建 UpdateFacade
@@ -124,23 +123,6 @@ func (f *UpdateFacade) CheckUpdate() (*UpdateInfo, error) {
 	return info, nil
 }
 
-// MockUpdate 返回一份模拟数据，便于调试 UI（不访问网络）
-func (f *UpdateFacade) MockUpdate() *UpdateInfo {
-	body := "### ✨ 新功能\n\n- 全新更新检查弹窗\n- 支持从 GitHub Releases 拉取最新版本\n\n### 🐞 修复\n\n- 若干细节优化"
-	return &UpdateInfo{
-		HasUpdate:      true,
-		CurrentVersion: version.Version,
-		LatestVersion:  "9.9.9",
-		PublishedAt:    time.Now().Format(time.RFC3339),
-		HtmlURL:        "https://github.com/Gridea-Pro/gridea-pro/releases",
-		Body:           body,
-		BodyHTML:       utils.ToHTMLUnsafe(body),
-		HasAsset:       true,
-		AssetName:      fmt.Sprintf("Gridea-Pro-9.9.9-%s-%s.mock", runtime.GOOS, runtime.GOARCH),
-		AssetSize:      42 * 1024 * 1024,
-	}
-}
-
 // StartDownload 启动真实下载，全程通过 update:progress 事件推送进度
 // 下载完成后发送 update:ready；失败发送 update:error。
 func (f *UpdateFacade) StartDownload() error {
@@ -153,10 +135,6 @@ func (f *UpdateFacade) StartDownload() error {
 	f.downloadCancel = cancel
 	f.mu.Unlock()
 
-	f.mu.Lock()
-	f.mockReady = false
-	f.mu.Unlock()
-
 	// 重新拉一次 Release 信息，避免依赖前端缓存（也方便重试）
 	go func() {
 		defer f.clearDownloadState()
@@ -167,56 +145,6 @@ func (f *UpdateFacade) StartDownload() error {
 			return
 		}
 		f.doDownload(ctx, asset.DownloadURL, asset.Name, asset.Size)
-	}()
-	return nil
-}
-
-// StartMockDownload SIMULATE 模式下用的假进度流（不触发真实 HTTP）
-func (f *UpdateFacade) StartMockDownload() error {
-	f.mu.Lock()
-	if f.downloadCancel != nil {
-		f.mu.Unlock()
-		return errors.New("已经有下载任务在运行")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	f.downloadCancel = cancel
-	f.mu.Unlock()
-
-	go func() {
-		defer f.clearDownloadState()
-
-		const total int64 = 42 * 1024 * 1024 // 42MB
-		const steps = 50
-		step := total / steps
-		ticker := time.NewTicker(80 * time.Millisecond)
-		defer ticker.Stop()
-
-		var received int64
-		for i := 1; i <= steps; i++ {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				received += step
-				if received > total {
-					received = total
-				}
-				f.emitProgress(received, total)
-			}
-		}
-		// 模拟一个本地临时文件以便 ApplyUpdate 的流程能跑通（不会真的去替换）
-		tmp, err := os.CreateTemp("", "gridea-pro-mock-*.bin")
-		if err == nil {
-			_ = tmp.Close()
-			f.mu.Lock()
-			f.readyPath = tmp.Name()
-			f.readyAssetName = fmt.Sprintf("Gridea-Pro-mock-%s-%s.bin", runtime.GOOS, runtime.GOARCH)
-			f.mockReady = true
-			f.mu.Unlock()
-			f.emitReady(tmp.Name())
-		} else {
-			f.emitError(err)
-		}
 	}()
 	return nil
 }
@@ -241,22 +169,10 @@ func (f *UpdateFacade) ApplyUpdate() error {
 	f.mu.Lock()
 	path := f.readyPath
 	name := f.readyAssetName
-	mock := f.mockReady
 	f.mu.Unlock()
 
 	if path == "" {
 		return errors.New("尚未完成下载，无法安装")
-	}
-	// mock 下载：不触发真实替换，也不重启应用，直接返回成功
-	// 前端在 SIMULATE 模式下会自行处理 UI（Toast + 关闭弹窗）
-	if mock {
-		_ = os.Remove(path)
-		f.mu.Lock()
-		f.readyPath = ""
-		f.readyAssetName = ""
-		f.mockReady = false
-		f.mu.Unlock()
-		return nil
 	}
 	if _, err := os.Stat(path); err != nil {
 		return fmt.Errorf("下载文件丢失: %w", err)

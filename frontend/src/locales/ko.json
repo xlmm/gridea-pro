@@ -40,8 +40,7 @@
         "install": "지금 업데이트",
         "restart": "재시작",
         "retry": "다시 시도",
-        "readyToRestart": "다운로드 완료. 재시작하여 업데이트 적용",
-        "mockApplied": "모의 업데이트 완료 (실제 재시작 없음)"
+        "readyToRestart": "다운로드 완료. 재시작하여 업데이트 적용"
     },
     "article": {
         "new": "새 글",

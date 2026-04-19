@@ -40,8 +40,7 @@
         "install": "立即更新",
         "restart": "立即重啟",
         "retry": "重試",
-        "readyToRestart": "下載完成，重啟以套用更新",
-        "mockApplied": "模擬更新完成（未觸發真實重啟）"
+        "readyToRestart": "下載完成，重啟以套用更新"
     },
     "article": {
         "new": "新增文章",

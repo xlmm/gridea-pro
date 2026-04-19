@@ -40,8 +40,7 @@
         "install": "Installer maintenant",
         "restart": "Redémarrer",
         "retry": "Réessayer",
-        "readyToRestart": "Téléchargement terminé. Redémarrez pour appliquer la mise à jour.",
-        "mockApplied": "Mise à jour simulée appliquée (pas de redémarrage réel)"
+        "readyToRestart": "Téléchargement terminé. Redémarrez pour appliquer la mise à jour."
     },
     "article": {
         "new": "Nouveau",

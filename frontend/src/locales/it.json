@@ -40,8 +40,7 @@
         "install": "Installa ora",
         "restart": "Riavvia",
         "retry": "Riprova",
-        "readyToRestart": "Download completato. Riavvia per applicare l'aggiornamento.",
-        "mockApplied": "Aggiornamento simulato applicato (nessun riavvio reale)"
+        "readyToRestart": "Download completato. Riavvia per applicare l'aggiornamento."
     },
     "article": {
         "new": "Nuovo",

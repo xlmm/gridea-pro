@@ -40,8 +40,7 @@
         "install": "Jetzt installieren",
         "restart": "Neu starten",
         "retry": "Erneut versuchen",
-        "readyToRestart": "Download abgeschlossen. Neu starten, um das Update anzuwenden.",
-        "mockApplied": "Simuliertes Update angewendet (kein echter Neustart)"
+        "readyToRestart": "Download abgeschlossen. Neu starten, um das Update anzuwenden."
     },
     "article": {
         "new": "Neu",

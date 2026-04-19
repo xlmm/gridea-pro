@@ -293,9 +293,7 @@ import { EventsEmit, EventsOn, BrowserOpenURL } from '@/wailsjs/runtime'
 import { DeployToGit } from '@/wailsjs/go/facade/DeployFacade'
 import {
   CheckUpdate,
-  MockUpdate,
   StartDownload,
-  StartMockDownload,
   CancelDownload,
   ApplyUpdate,
 } from '@/wailsjs/go/facade/UpdateFacade'
@@ -468,9 +466,6 @@ const openInBrowser = (url: string) => {
   BrowserOpenURL(url)
 }
 
-// 演示开关：打开后不访问网络，直接展示模拟更新数据（弹窗 + 红点）
-const SIMULATE_UPDATE = true
-
 // 「跳过此版本」持久化：记录用户明确选择忽略的版本号
 // 命中时：启动/轮询不亮红点、不弹窗；手动点菜单仍强制展示
 const IGNORED_VERSION_KEY = 'gridea-pro:ignored-update-version'
@@ -511,8 +506,8 @@ const openUpdateDialog = () => {
 
 const checkUpdate = async ({ manual = false } = {}) => {
   try {
-    const info = SIMULATE_UPDATE ? await MockUpdate() : await CheckUpdate()
-    applyUpdateInfo(info, { openDialog: manual || SIMULATE_UPDATE, manual })
+    const info = await CheckUpdate()
+    applyUpdateInfo(info, { openDialog: manual, manual })
   } catch (err) {
     console.error('[checkUpdate] failed:', err)
     if (manual) {
@@ -537,11 +532,7 @@ const startUpdate = async () => {
   resetDownloadState()
   updateState.value = 'downloading'
   try {
-    if (SIMULATE_UPDATE) {
-      await StartMockDownload()
-    } else {
-      await StartDownload()
-    }
+    await StartDownload()
   } catch (err: any) {
     updateState.value = 'error'
     updateError.value = String(err?.message || err)
@@ -556,17 +547,7 @@ const cancelUpdate = async () => {
 const applyUpdate = async () => {
   try {
     await ApplyUpdate()
-    // SIMULATE 模式下后端直接返回成功，不会真的重启。给用户一个提示后关弹窗
-    if (SIMULATE_UPDATE) {
-      EventsEmit('app:toast', {
-        message: t('update.mockApplied'),
-        type: 'success',
-        duration: 3000,
-      })
-      updateModalVisible.value = false
-      resetDownloadState()
-    }
-    // 非模拟模式下后端会自行重启应用，前端不需要额外处理
+    // 后端会自行重启应用，前端不需要额外处理
   } catch (err: any) {
     updateState.value = 'error'
     updateError.value = String(err?.message || err)
