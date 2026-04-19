@@ -7,8 +7,9 @@
             return 'light';
         };
 
+        const configDefault = '{{ theme_config.defaultTheme|default:"" }}';
         const savedTheme = localStorage.getItem('theme');
-        const theme = savedTheme || getSystemTheme();
+        const theme = savedTheme || configDefault || getSystemTheme();
 
         if (theme === 'dark') {
             document.body.classList.add('dark-theme');

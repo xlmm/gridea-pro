@@ -56,6 +56,24 @@
       "note": ""
     },
     {
+      "name": "defaultTheme",
+      "label": "默认主题",
+      "group": "外观设置",
+      "type": "select",
+      "value": "dark",
+      "options": [
+        {
+          "label": "深色",
+          "value": "dark"
+        },
+        {
+          "label": "浅色",
+          "value": "light"
+        }
+      ],
+      "note": "访客首次访问时默认显示的主题；之后由访客自行切换并记住其选择"
+    },
+    {
       "name": "accentColor",
       "label": "主题强调色",
       "group": "外观设置",

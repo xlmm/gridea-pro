@@ -41,8 +41,9 @@
                 return 'light';
             };
 
+            const configDefault = '{{ theme_config.defaultTheme|default:"" }}';
             const currentTheme = window.localStorage && window.localStorage.getItem('theme');
-            const initialTheme = currentTheme || getSystemTheme();
+            const initialTheme = currentTheme || configDefault || getSystemTheme();
             const isDark = initialTheme === 'dark';
 
             const updateButtons = (dark) => {
@@ -130,7 +131,7 @@
             };
             _Blog.toggleTheme();
 
-            if (window.matchMedia) {
+            if (window.matchMedia && !configDefault) {
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
                     const newTheme = e.matches ? 'dark' : 'light';
                     applyTheme(e.matches);

@@ -7,8 +7,9 @@
             return 'light';
         };
 
+        const configDefault = '<%= site.customConfig.defaultTheme || "" %>';
         const savedTheme = localStorage.getItem('theme');
-        const theme = savedTheme || getSystemTheme();
+        const theme = savedTheme || configDefault || getSystemTheme();
 
         if (theme === 'dark') {
             document.body.classList.add('dark-theme');

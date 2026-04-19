@@ -12,8 +12,9 @@
             return 'light';
         };
 
+        const configDefault = '{{ theme_config.defaultTheme|default:"" }}';
         const savedTheme = localStorage.getItem('theme');
-        const theme = savedTheme || getSystemTheme();
+        const theme = savedTheme || configDefault || getSystemTheme();
 
         if (theme === 'dark') {
             document.body.classList.add('dark-theme');
@@ -155,7 +156,7 @@
         <footer id="footer" class="index_footer">
             {{ themeConfig.footerInfo | safe }} ·
             <a class="rss" href="/feed.xml" target="_blank">
-                <i class="ri-rss-line"></i> 🍀 RSS
+                <i class="ri-rss-line"></i> RSS
             </a>
         </footer>
 

@@ -11,8 +11,9 @@
                         return 'light';
                     };
 
+                    const configDefault = '<%= site.customConfig.defaultTheme || "" %>';
                     const savedTheme = localStorage.getItem('theme');
-                    const theme = savedTheme || getSystemTheme();
+                    const theme = savedTheme || configDefault || getSystemTheme();
 
                     if (theme === 'dark') {
                         document.body.classList.add('dark-theme');
@@ -27,12 +28,12 @@
                 <div class="main">
                     <div class="mod-index__logo">
                         <a href="/">
-                            <% var _logo = site.customConfig.siteLogo || site.customConfig.avatar; %>
-                            <% if (_logo) { %>
-                                <img class="mod-index__logo" alt="avatar" src="<%= _logo %>">
-                            <% } else { %>
-                                <img class="mod-index__logo" alt="avatar" src="/media/images/avatar.jpg">
-                            <% } %>
+                            <% var _logo=site.customConfig.siteLogo || site.customConfig.avatar; %>
+                                <% if (_logo) { %>
+                                    <img class="mod-index__logo" alt="avatar" src="<%= _logo %>">
+                                    <% } else { %>
+                                        <img class="mod-index__logo" alt="avatar" src="/media/images/avatar.jpg">
+                                        <% } %>
                         </a>
                     </div>
 
@@ -136,7 +137,7 @@
                     <footer id="footer" class="index_footer">
                         <%- themeConfig.footerInfo %> ·
                             <a class="rss" href="/feed.xml" target="_blank">
-                                <i class="ri-rss-line"></i> 🍀 RSS
+                                <i class="ri-rss-line"></i> RSS
                             </a>
                     </footer>
 
@@ -145,8 +146,8 @@
             </div>
 
             <% if (site.customConfig.customJs) { %>
-            <%- '<script>' + site.customConfig.customJs + '<\/script>' %>
-            <% } %>
+                <%- '<script>' + site.customConfig.customJs + '<\/script>' %>
+                    <% } %>
 
     </body>
 
