@@ -118,20 +118,62 @@ fill-rule="evenodd" clip-rule="evenodd"
 
     <!-- Dialogs -->
     <Dialog v-model:open="updateModalVisible">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>🔥 New Version</DialogTitle>
-        </DialogHeader>
-        <div class="download-container mb-4 text-center text-sm">
-          👉 <a
-href="#" class="text-primary hover:underline"
-            @click.prevent="openInBrowser('https://gridea.pro')">Gridea
-            Homepage</a> | <a
-href="#" class="text-primary hover:underline"
-            @click.prevent="openInBrowser('https://github.com/Gridea-Pro/gridea-pro/releases')">Github Releases</a> 👈
+      <DialogContent class="update-dialog p-0 max-w-[480px] overflow-hidden border-0 shadow-2xl">
+        <DialogTitle class="sr-only">{{ t('update.title') }}</DialogTitle>
+
+        <!-- Hero -->
+        <div class="relative px-6 pt-8 pb-5 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent">
+          <div class="flex items-start gap-4">
+            <img
+              src="@/assets/logo-pro.png" alt="Gridea Pro"
+              class="size-14 rounded-lg shadow-sm flex-shrink-0 object-cover" />
+            <div class="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+              <h2 class="text-lg font-semibold text-foreground leading-tight">
+                {{ t('update.title') }}
+              </h2>
+              <div class="inline-flex items-center gap-1.5">
+                <span class="inline-flex items-center justify-center h-4 px-2 rounded-full bg-muted/60 text-[10px] text-muted-foreground border border-border/60 font-mono">
+                  v{{ currentVersion }}
+                </span>
+                <ArrowRightIcon class="size-3 text-muted-foreground" />
+                <span class="inline-flex items-center justify-center h-4 px-2 rounded-full bg-primary/10 text-[10px] text-primary/80 border border-primary/20 font-mono">
+                  v{{ newVersion }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-        <h2 class="text-xl font-bold mb-2">{{ newVersion }}</h2>
-        <div class="version-info prose prose-sm max-w-none dark:prose-invert" v-html="updateContent"></div>
+
+        <!-- Release notes -->
+        <div class="px-6 py-4 max-h-[320px] overflow-y-auto border-t border-border/60">
+          <div class="release-notes text-sm text-foreground/90 leading-relaxed" v-html="updateContent"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-border/60 bg-muted/30 flex items-center justify-between gap-3">
+          <button
+            :title="t('update.viewOnGithub')"
+            class="size-7 grid place-items-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            @click="openInBrowser('https://github.com/Gridea-Pro/gridea-pro/releases')">
+            <svg viewBox="0 0 24 24" aria-hidden="true" class="size-4 fill-current">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.335 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+            </svg>
+          </button>
+          <div class="flex items-center gap-3">
+            <Button
+              variant="outline"
+              class="w-20 h-8 text-xs justify-center rounded-full border border-primary/20 text-primary/80 hover:bg-primary/5 hover:text-primary cursor-pointer"
+              @click="updateModalVisible = false">
+              {{ t('update.later') }}
+            </Button>
+            <Button
+              variant="default"
+              class="w-24 h-8 text-xs justify-center rounded-full bg-primary text-background hover:bg-primary/90 cursor-pointer"
+              @click="openInBrowser('https://gridea.pro')">
+              {{ t('update.download') }}
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
 
@@ -170,6 +212,7 @@ import AppSystem from '@/views/preferences/index.vue'
 import { Button } from '@/components/ui/button'
 import { EventsEmit, EventsOn, BrowserOpenURL } from '@/wailsjs/runtime'
 import { DeployToGit } from '@/wailsjs/go/facade/DeployFacade'
+import { CheckUpdate, MockUpdate } from '@/wailsjs/go/facade/UpdateFacade'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import WindowControls from '@/components/WindowControls/index.vue'
 import {
@@ -187,6 +230,7 @@ import {
   ChatBubbleLeftRightIcon,
   CogIcon,
   LightBulbIcon,
+  ArrowRightIcon,
 } from '@heroicons/vue/24/outline'
 import pkg from '../../package.json'
 
@@ -202,6 +246,7 @@ const version = pkg.version
 const publishLoading = ref(false)
 const hasUpdate = ref(false)
 const newVersion = ref('')
+const currentVersion = ref(pkg.version)
 const updateModalVisible = ref(false)
 const systemModalVisible = ref(false)
 const updateContent = ref('')
@@ -315,8 +360,34 @@ const openInBrowser = (url: string) => {
   BrowserOpenURL(url)
 }
 
-const checkUpdate = () => {
-  // Implement update check logic or listen to main process
+// 演示开关：打开后不访问网络，直接展示模拟更新数据（弹窗 + 红点）
+const SIMULATE_UPDATE = true
+
+const applyUpdateInfo = (info: any, { openDialog = false } = {}) => {
+  if (!info) return
+  hasUpdate.value = !!info.hasUpdate
+  newVersion.value = info.latestVersion || ''
+  currentVersion.value = info.currentVersion || pkg.version
+  updateContent.value = info.bodyHtml || ''
+  if (openDialog && hasUpdate.value) {
+    updateModalVisible.value = true
+  }
+}
+
+const checkUpdate = async ({ manual = false } = {}) => {
+  try {
+    const info = SIMULATE_UPDATE ? await MockUpdate() : await CheckUpdate()
+    applyUpdateInfo(info, { openDialog: manual || SIMULATE_UPDATE })
+  } catch (err) {
+    console.error('[checkUpdate] failed:', err)
+    if (manual) {
+      EventsEmit('app:toast', {
+        message: String((err as any)?.message || err),
+        type: 'error',
+        duration: 3000,
+      })
+    }
+  }
 }
 
 const reloadSite = () => {
@@ -407,7 +478,7 @@ onMounted(() => {
 
   // 检查更新
   EventsOn('menu:check-update', () => {
-    checkUpdate()
+    checkUpdate({ manual: true })
   })
 
   // 原生菜单调用部署
@@ -417,6 +488,9 @@ onMounted(() => {
 
   // Initial site load request
   EventsEmit('app-ready')
+
+  // 启动后尝试检查更新（失败静默，不打扰用户）
+  checkUpdate()
 
   // 初始化加载评论并开启全局轮询（用于更新侧边栏红点）
   commentStore.fetchComments()
@@ -449,5 +523,94 @@ onMounted(() => {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Release notes typography — 适配 GitHub Release Markdown 输出 */
+.release-notes :deep(h1),
+.release-notes :deep(h2),
+.release-notes :deep(h3),
+.release-notes :deep(h4) {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: var(--foreground);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.release-notes :deep(h1:first-child),
+.release-notes :deep(h2:first-child),
+.release-notes :deep(h3:first-child),
+.release-notes :deep(h4:first-child) {
+  margin-top: 0;
+}
+
+.release-notes :deep(p) {
+  margin: 0.5rem 0;
+}
+
+.release-notes :deep(ul),
+.release-notes :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.release-notes :deep(li) {
+  margin: 0.25rem 0;
+  list-style-type: disc;
+}
+
+.release-notes :deep(li::marker) {
+  color: var(--primary);
+}
+
+.release-notes :deep(a) {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.release-notes :deep(a:hover) {
+  text-decoration: underline;
+}
+
+.release-notes :deep(code) {
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: var(--muted);
+  font-size: 0.8125rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.release-notes :deep(pre) {
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  background: var(--muted);
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.release-notes :deep(pre code) {
+  padding: 0;
+  background: transparent;
+}
+
+.release-notes :deep(hr) {
+  margin: 1rem 0;
+  border-color: var(--border);
+}
+
+/* 自定义滚动条 */
+.update-dialog :deep(*)::-webkit-scrollbar {
+  width: 6px;
+}
+
+.update-dialog :deep(*)::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  border-radius: 3px;
+}
+
+.update-dialog :deep(*)::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--primary) 40%, transparent);
 }
 </style>

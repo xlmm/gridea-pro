@@ -32,6 +32,12 @@
         "syncSuccess": "Synchronization succeeded!",
         "syncError1": "Sorry, synchronization encountered an error, please refer to"
     },
+    "update": {
+        "title": "A new Gridea Pro is available",
+        "viewOnGithub": "View Release",
+        "later": "Later",
+        "download": "Download"
+    },
     "article": {
         "new": "New",
         "title": "Title",

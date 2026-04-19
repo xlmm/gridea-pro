@@ -36,6 +36,7 @@ type AppServices struct {
 	CdnUpload  *CdnUploadFacade
 	AI         *AIFacade
 	OAuth      *OAuthFacade
+	Update     *UpdateFacade
 	// Internal services for event/update handling
 	Services struct {
 		Category  *service.CategoryService
@@ -147,6 +148,7 @@ func NewAppServices(appDir string, assets embed.FS) *AppServices {
 		CdnUpload:  NewCdnUploadFacade(cdnUploadService),
 		AI:         NewAIFacade(aiSettingRepo, aiService),
 		OAuth:      NewOAuthFacade(oauthService),
+		Update:     NewUpdateFacade(),
 		Services: struct {
 			Category  *service.CategoryService
 			Post      *service.PostService

@@ -32,6 +32,12 @@
     "syncSuccess": "同步成功啦！",
     "syncError1": "同步遇到了错误，请查阅"
   },
+  "update": {
+    "title": "Gridea Pro 已发布新版本",
+    "viewOnGithub": "查看 Release",
+    "later": "稍后再说",
+    "download": "前往下载"
+  },
   "article": {
     "new": "新文章",
     "title": "标题",
