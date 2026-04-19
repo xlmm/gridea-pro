@@ -73,7 +73,8 @@
   margin-left: 8px;
 }
 
-.search-btn {
+.search-btn,
+.theme-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -81,12 +82,15 @@
   height: 36px;
   border-radius: 6px;
   color: var(--color-text-secondary);
+  background: none;
+  border: none;
   transition: color var(--transition-fast),
     background-color var(--transition-fast);
   cursor: pointer;
 }
 
-.search-btn:hover {
+.search-btn:hover,
+.theme-toggle:hover {
   color: var(--color-text-primary);
   background-color: var(--color-surface);
 }
@@ -95,6 +99,31 @@
   width: 18px;
   height: 18px;
 }
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── Theme toggle icon swap (visible icon = 下一步将切换到的状态) ── */
+.theme-toggle-sun { display: flex; }
+.theme-toggle-moon { display: none; }
+:root.theme-light .theme-toggle-sun { display: none; }
+:root.theme-light .theme-toggle-moon { display: flex; }
+
+/* 深色模式下的太阳图标：默认点亮为金色，hover 时更亮（仅底色效果继承 .theme-toggle:hover） */
+.theme-toggle-sun {
+  color: #ffd700;
+}
+
+.theme-toggle-sun:hover {
+  color: #ffe34a;
+}
+
+/* ── Right-side action order：主题切换永远在搜索之前 ── */
+.theme-toggle { order: 0; }
+.search-btn { order: 1; }
+.btn-nav-toggle { order: 2; }
 
 .nav-toggle {
   display: none;

@@ -238,3 +238,95 @@ body {
 }
 
 
+/* ============================================================================
+   § 5. LIGHT THEME OVERRIDES
+   ============================================================================ */
+
+:root.theme-light {
+  --color-bg: #ffffff;
+  --color-surface: #f7f7f8;
+  --color-border: #e5e5e7;
+  --color-border-light: #f0f0f2;
+  --color-border-hover: #c4c4c6;
+  --color-text-primary: #111111;
+  --color-text-secondary: #555555;
+  --color-text-muted: #8a8a8a;
+  --color-text-body: #222222;
+  --color-accent: #1f1f1f;
+  --color-accent-hover: #b88a00;
+  --color-badge-gold: #b88a00;
+}
+
+.theme-light body::-webkit-scrollbar-thumb {
+  background: #cfcfd2;
+}
+
+.theme-light body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8ab;
+}
+
+.theme-light body {
+  scrollbar-color: #cfcfd2 var(--color-bg);
+}
+
+.theme-light mark {
+  background-color: rgba(255, 235, 59, 0.45);
+  color: #6a5200;
+}
+
+/* 文章内容：blockquote / 行内代码 在浅色下需要单独处理硬编码颜色 */
+.theme-light .article-content blockquote,
+.theme-light .post-content blockquote {
+  border-left-color: #d6d6d8;
+}
+
+.theme-light .article-content code,
+.theme-light .post-content code {
+  background-color: #f3f3f5;
+  color: #8f2a17;
+}
+
+/* 卡片 hover：原硬编码 #161616（极深）在浅色下需反向 */
+.theme-light .post-nav-card:hover,
+.theme-light .link-card:hover {
+  background-color: #f0f0f2;
+}
+
+/* 搜索遮罩：浅色下用轻微灰色遮罩代替纯黑 */
+.theme-light .search-overlay {
+  background: rgba(20, 20, 20, 0.35);
+}
+
+.theme-light .search-result-item__tag--hit {
+  color: #6a5200;
+  background: rgba(255, 235, 59, 0.45);
+}
+
+.theme-light .search-result-item__date {
+  color: var(--color-text-muted);
+}
+
+.theme-light .btn--primary:hover {
+  background-color: #3a3a3a;
+  border-color: #3a3a3a;
+}
+
+.theme-light .footer-powered {
+  color: var(--color-text-muted);
+}
+
+.theme-light .link-card:hover .link-card__arrow {
+  color: #ffffff;
+}
+
+/* Hero 区有深色渐变遮罩，文字在浅色模式下仍需保持白色 */
+.theme-light .hero-title,
+.theme-light .hero-cta {
+  color: #ffffff;
+}
+
+.theme-light .hero-subtitle {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+

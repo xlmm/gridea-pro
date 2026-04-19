@@ -15,4 +15,15 @@
 {# Favicon #}
 <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
-{# SEO/社交标签由 Gridea Pro 的 HtmlPostProcessor 统一注入 #}
+{# 主题色初始化：优先用本地存储，否则使用站长在主题外观里选择的默认主题，避免深浅模式闪屏 #}
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('flavor-theme');
+      var theme = saved || '{{ theme_config.defaultTheme|default:"dark" }}';
+      if (theme === 'light') {
+        document.documentElement.classList.add('theme-light');
+      }
+    } catch (e) { }
+  })();
+</script>

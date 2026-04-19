@@ -211,13 +211,13 @@ input,
    ============================================================================ */
 
 ::selection {
-  background-color: var(--color-accent);
-  color: var(--color-text-primary);
+  background-color: #ffff00;
+  color: #000000;
 }
 
 ::-moz-selection {
-  background-color: var(--color-accent);
-  color: var(--color-text-primary);
+  background-color: #ffff00;
+  color: #000000;
 }
 
 
