@@ -120,7 +120,7 @@ jobs:
       - name: Build macOS ${{ matrix.arch }}
         shell: bash
         run: |
-          LDFLAGS="-X main.Version=${VERSION}"
+          LDFLAGS="-X main.Version=${VERSION#v}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.githubClientID=${GH_OAUTH_CLIENT_ID}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.githubClientSecret=${GH_OAUTH_CLIENT_SECRET}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.giteeClientID=${GITEE_CLIENT_ID}"
@@ -267,7 +267,7 @@ jobs:
       - name: Build Windows ${{ matrix.arch }}
         shell: bash
         run: |
-          LDFLAGS="-X main.Version=${VERSION}"
+          LDFLAGS="-X main.Version=${VERSION#v}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.githubClientID=${GH_OAUTH_CLIENT_ID}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.githubClientSecret=${GH_OAUTH_CLIENT_SECRET}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.giteeClientID=${GITEE_CLIENT_ID}"
@@ -436,7 +436,7 @@ jobs:
       - name: Build Linux binary
         shell: bash
         run: |
-          LDFLAGS="-X main.Version=${VERSION}"
+          LDFLAGS="-X main.Version=${VERSION#v}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.githubClientID=${GH_OAUTH_CLIENT_ID}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.githubClientSecret=${GH_OAUTH_CLIENT_SECRET}"
           LDFLAGS="${LDFLAGS} -X gridea-pro/backend/internal/service/oauth.giteeClientID=${GITEE_CLIENT_ID}"

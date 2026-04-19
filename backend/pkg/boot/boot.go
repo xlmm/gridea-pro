@@ -7,6 +7,7 @@ import (
 	"gridea-pro/backend/internal/app"
 	"gridea-pro/backend/internal/config"
 	"gridea-pro/backend/internal/facade"
+	versionpkg "gridea-pro/backend/internal/version"
 	"log"
 	"net/http"
 	"os"
@@ -140,6 +141,12 @@ func openInTerminal(path string) {
 }
 
 func Run(assets embed.FS, version string) {
+	// 把 main 侧 ldflags 注入的版本号写入 version 包，作为全局唯一真源
+	// （main 无法直接导入 internal/version，所以由 boot 做桥接）
+	if version != "" {
+		versionpkg.Version = version
+	}
+
 	// 初始化 ConfigManager
 	configManager, err := config.NewConfigManager()
 	if err != nil {
