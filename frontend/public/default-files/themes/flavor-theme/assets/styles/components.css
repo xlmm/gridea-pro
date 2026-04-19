@@ -288,8 +288,9 @@
   display: inline-block;
   width: 3px;
   height: 14px;
-  background: #e63946;
+  background: #ff3546;
   flex-shrink: 0;
+  border-radius: 3px;
 }
 
 /* ── Post thumbnail ── */

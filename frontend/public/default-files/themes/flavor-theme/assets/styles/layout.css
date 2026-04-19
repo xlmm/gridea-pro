@@ -124,11 +124,11 @@
 
 /* 深色模式下的太阳图标：默认点亮为金色，hover 时更亮（仅底色效果继承 .theme-toggle:hover） */
 .theme-toggle-sun {
-  color: #ffd700;
+  color: #FFE300;
 }
 
 .theme-toggle-sun:hover {
-  color: #ffe34a;
+  color: #FFE300;
 }
 
 /* ── Right-side action order：主题切换永远在搜索之前 ── */
