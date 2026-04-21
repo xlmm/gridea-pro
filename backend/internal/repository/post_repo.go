@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -328,6 +329,9 @@ func (r *postRepository) GetByFileName(ctx context.Context, fileName string) (*d
 	return nil, fmt.Errorf("post not found: %s", fileName)
 }
 
+// List 按分页返回文章。用于真实的分页展示场景（如 MCP 列表接口）。
+// 注意：若调用方需要「全部文章」，请使用 GetAll —— 不要用 List(ctx, 1, 大数字) 的惯用法，
+// 这种写法有静默丢弃数据的风险。
 func (r *postRepository) List(ctx context.Context, page, size int) ([]domain.Post, int64, error) {
 	if err := r.scanPosts(); err != nil {
 		return nil, 0, err
@@ -356,9 +360,15 @@ func (r *postRepository) List(ctx context.Context, page, size int) ([]domain.Pos
 	return result, total, nil
 }
 
+// GetAll 返回所有文章的副本（按 IsTop desc、CreatedAt desc 排序，与 List 一致）。
+// 供渲染、级联修改、数据迁移等需要全量遍历的场景使用。
 func (r *postRepository) GetAll(ctx context.Context) ([]domain.Post, error) {
-	posts, _, err := r.List(ctx, 1, 100000)
-	return posts, err
+	if err := r.scanPosts(); err != nil {
+		return nil, err
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return slices.Clone(r.cache), nil
 }
 
 func (r *postRepository) saveCacheJSON() {

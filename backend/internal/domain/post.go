@@ -87,9 +87,11 @@ type PostRepository interface {
 	// List returns paginated posts.
 	// page is 1-based. size is items per page.
 	// Returns posts, total count, and error.
+	// 注意：若需要取全部文章，请使用 GetAll，不要用 List(ctx, 1, 大数字) 的惯用法。
 	List(ctx context.Context, page, size int) ([]Post, int64, error)
 
-	// Deprecated: Use List instead
+	// GetAll returns all posts (sorted by IsTop desc, then CreatedAt desc).
+	// 用于渲染、级联修改、数据迁移等需要全量遍历的场景。
 	GetAll(ctx context.Context) ([]Post, error)
 
 	// Reload forces a rescan of the post directory

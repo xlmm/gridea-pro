@@ -99,7 +99,8 @@ func (s *CommentService) FetchComments(ctx context.Context, page, pageSize int) 
 	}
 
 	// 填充文章标题 - 优化 O(1) 查找
-	posts, _, _ := s.postRepo.List(ctx, 1, 10000) // Revert to GetAll as PostRepository uses GetAll
+	// 读不到文章不影响评论列表返回，仅丢失 ArticleTitle 丰富化；保留 graceful degradation
+	posts, _ := s.postRepo.GetAll(ctx)
 	postMap := make(map[string]*domain.Post)      // Key: URL Path / ID, Value: Post Reference
 	if len(posts) > 0 {
 		for i := range posts {

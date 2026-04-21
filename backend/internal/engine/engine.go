@@ -188,7 +188,7 @@ func (s *Engine) RenderAll(ctx context.Context) error {
 func (s *Engine) renderAllImpl(ctx context.Context) error {
 	startTime := time.Now()
 	// 获取数据
-	posts, _, err := s.postRepo.List(ctx, 1, 10000)
+	posts, err := s.postRepo.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("获取文章失败: %w", err)
 	}

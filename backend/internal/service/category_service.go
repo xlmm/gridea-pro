@@ -115,7 +115,7 @@ func (s *CategoryService) GetByID(ctx context.Context, id string) (*domain.Categ
 }
 
 func (s *CategoryService) cascadeCategoryRename(ctx context.Context, oldName, newName string) error {
-	posts, _, err := s.postRepo.List(ctx, 1, 10000)
+	posts, err := s.postRepo.GetAll(ctx)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func (s *CategoryService) cascadeCategoryRename(ctx context.Context, oldName, ne
 }
 
 func (s *CategoryService) cascadeCategoryDelete(ctx context.Context, categoryID, categoryName string) error {
-	posts, _, err := s.postRepo.List(ctx, 1, 10000)
+	posts, err := s.postRepo.GetAll(ctx)
 	if err != nil {
 		return err
 	}

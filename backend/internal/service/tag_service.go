@@ -237,7 +237,7 @@ func (s *TagService) generateSlug(name string, existingTags []domain.Tag) string
 }
 
 func (s *TagService) cascadeTagRename(ctx context.Context, oldName, newName string) error {
-	posts, _, err := s.postRepo.List(ctx, 1, 10000)
+	posts, err := s.postRepo.GetAll(ctx)
 	if err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func (s *TagService) cascadeTagRename(ctx context.Context, oldName, newName stri
 }
 
 func (s *TagService) cascadeTagDelete(ctx context.Context, tagID, tagName string) error {
-	posts, _, err := s.postRepo.List(ctx, 1, 10000)
+	posts, err := s.postRepo.GetAll(ctx)
 	if err != nil {
 		return err
 	}

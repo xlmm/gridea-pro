@@ -31,18 +31,14 @@ func (s *PostService) LoadPosts(ctx context.Context) ([]domain.Post, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// 假设默认分页大小足够大，或者我们实现一个新的 GetAll for internal use if needed
-	// 但 Repository interface 只有 List(page, size).
-	// 为了兼容 LoadPosts 语义 (返回所有)，我们传递大数
-	posts, _, err := s.repo.List(ctx, 1, 10000)
-	return posts, err
+	return s.repo.GetAll(ctx)
 }
 
 func (s *PostService) LoadTags(ctx context.Context) ([]domain.Tag, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	posts, _, err := s.repo.List(ctx, 1, 10000)
+	posts, err := s.repo.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -83,7 +83,7 @@ func (f *TagFacade) SaveTagFromFrontend(form TagForm) (*TagCascadeResult, error)
 		return nil, err
 	}
 
-	posts, _, err := f.postRepo.List(ctx(), 1, 10000)
+	posts, err := f.postRepo.GetAll(ctx())
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (f *TagFacade) DeleteTagFromFrontend(name string) (*TagCascadeResult, error
 		return nil, err
 	}
 
-	posts, _, err := f.postRepo.List(ctx(), 1, 10000)
+	posts, err := f.postRepo.GetAll(ctx())
 	if err != nil {
 		return nil, err
 	}
