@@ -34,13 +34,6 @@ func listCommentsHandler(s *service.CommentService) server.ToolHandlerFunc {
 func replyCommentTool() mcp.Tool {
 	return mcp.NewTool("reply_comment",
 		mcp.WithDescription("Reply to a comment"),
-		mcp.WithString("parentInfo", mcp.Description("Parent Comment ID or Info (Internal ID)")),
-		// Wait, FetchComments returns domain.PaginatedComments -> Comments.
-		// domain.Comment has ID? `backend/internal/domain/comment.go` needs checking if ID is exposed as what.
-		// Service `ReplyComment` takes `parentID`, `content`, `articleID`.
-		// Let's assume parentID is the ID of the comment we reply to.
-		// We need articleID too?
-		// `ReplyComment(ctx, parentID, content, articleID)`
 		mcp.WithString("parentId", mcp.Description("Parent Comment ID"), mcp.Required()),
 		mcp.WithString("articleId", mcp.Description("Article ID (or path)"), mcp.Required()),
 		mcp.WithString("content", mcp.Description("Reply content"), mcp.Required()),
