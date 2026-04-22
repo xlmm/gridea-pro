@@ -8,6 +8,7 @@ import (
 	"gridea-pro/backend/internal/utils"
 	"gridea-pro/backend/internal/version"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -231,11 +232,46 @@ func (f *UpdateFacade) fetchAssetForCurrentPlatform(ctx context.Context) (*githu
 	return asset, nil
 }
 
+// doDownload 对外入口：带有指数退避的自动重试。
+// 可重试错误（transient）—— 网络超时 / connection reset / 5xx / 408 / 429 —— 会重跑最多 maxDownloadAttempts - 1 次；
+// 不可重试错误 —— 4xx（除 408/429）/ URL 合法性失败 / ctx 取消 —— 立即上报。
 func (f *UpdateFacade) doDownload(ctx context.Context, url, assetName string, expectedSize int64) {
+	const maxDownloadAttempts = 3
+	for attempt := 1; attempt <= maxDownloadAttempts; attempt++ {
+		err := f.tryDownload(ctx, url, assetName, expectedSize)
+		if err == nil {
+			return // tryDownload 成功时已 emitReady，无需再做其它
+		}
+
+		// 用户取消：立刻退出，不重试也不报错（CancelDownload 在前端已给出反馈）
+		if ctx.Err() != nil {
+			return
+		}
+
+		if attempt >= maxDownloadAttempts || !isTransientDownloadErr(err) {
+			f.emitError(err)
+			return
+		}
+
+		// 指数退避：1s / 2s / 4s；期间仍响应 ctx 取消
+		backoff := time.Duration(1<<(attempt-1)) * time.Second
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+		// 重试开始前给前端一个明显信号：把 received 拉回 0，避免进度条在 70% 瞬间跳 0% 的惊吓
+		// （emitProgress 会计算 percent=0，前端据此可显示"重试中"文案）
+		f.emitProgress(0, expectedSize)
+	}
+}
+
+// tryDownload 执行一次完整的下载尝试。成功时写入 readyPath / readyAssetName 并 emitReady，
+// 失败时返回 error（调用方决定是否重试）。调用方负责在 ctx 取消时不要再次调用本函数。
+func (f *UpdateFacade) tryDownload(ctx context.Context, url, assetName string, expectedSize int64) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		f.emitError(err)
-		return
+		return err
 	}
 	req.Header.Set("User-Agent", "Gridea-Pro/"+version.Version)
 
@@ -243,13 +279,11 @@ func (f *UpdateFacade) doDownload(ctx context.Context, url, assetName string, ex
 	dlClient := &http.Client{Timeout: 30 * time.Minute}
 	resp, err := dlClient.Do(req)
 	if err != nil {
-		f.emitError(fmt.Errorf("下载失败: %w", err))
-		return
+		return fmt.Errorf("下载失败: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		f.emitError(fmt.Errorf("下载返回 %d", resp.StatusCode))
-		return
+		return &httpStatusError{code: resp.StatusCode}
 	}
 
 	total := resp.ContentLength
@@ -259,8 +293,7 @@ func (f *UpdateFacade) doDownload(ctx context.Context, url, assetName string, ex
 
 	tmp, err := os.CreateTemp("", "gridea-pro-update-*-"+sanitizeName(assetName))
 	if err != nil {
-		f.emitError(fmt.Errorf("创建临时文件失败: %w", err))
-		return
+		return fmt.Errorf("创建临时文件失败: %w", err)
 	}
 	f.mu.Lock()
 	f.downloadingFile = tmp
@@ -275,7 +308,7 @@ func (f *UpdateFacade) doDownload(ctx context.Context, url, assetName string, ex
 		case <-ctx.Done():
 			_ = tmp.Close()
 			_ = os.Remove(tmp.Name())
-			return
+			return ctx.Err()
 		default:
 		}
 
@@ -284,8 +317,7 @@ func (f *UpdateFacade) doDownload(ctx context.Context, url, assetName string, ex
 			if _, werr := tmp.Write(buf[:n]); werr != nil {
 				_ = tmp.Close()
 				_ = os.Remove(tmp.Name())
-				f.emitError(fmt.Errorf("写入失败: %w", werr))
-				return
+				return fmt.Errorf("写入失败: %w", werr)
 			}
 			received += int64(n)
 			if time.Now().After(nextEmit) {
@@ -299,16 +331,14 @@ func (f *UpdateFacade) doDownload(ctx context.Context, url, assetName string, ex
 		if rerr != nil {
 			_ = tmp.Close()
 			_ = os.Remove(tmp.Name())
-			f.emitError(fmt.Errorf("读取失败: %w", rerr))
-			return
+			return fmt.Errorf("读取失败: %w", rerr)
 		}
 	}
 	// 最后再推一次 100%
 	f.emitProgress(received, received)
 
 	if err := tmp.Close(); err != nil {
-		f.emitError(fmt.Errorf("关闭文件失败: %w", err))
-		return
+		return fmt.Errorf("关闭文件失败: %w", err)
 	}
 
 	f.mu.Lock()
@@ -317,6 +347,48 @@ func (f *UpdateFacade) doDownload(ctx context.Context, url, assetName string, ex
 	f.mu.Unlock()
 
 	f.emitReady(tmp.Name())
+	return nil
+}
+
+// httpStatusError 表示 doDownload 收到非 2xx 响应，便于 isTransientDownloadErr
+// 区分 5xx / 408 / 429（可重试）与其它 4xx（不可重试）。
+type httpStatusError struct {
+	code int
+}
+
+func (e *httpStatusError) Error() string { return fmt.Sprintf("下载返回 %d", e.code) }
+
+// isTransientDownloadErr 判定是否属于"可能自愈"的瞬时错误，值得重试。
+// - net.Error.Timeout()       → 连接 / 读超时
+// - connection reset / EOF    → 被对端中断
+// - 5xx                        → 服务器暂时性错误
+// - 408 / 429                  → 服务器要求客户端稍后再试
+// 其它情形（4xx / URL 合法性 / 本地写入错误）不重试。
+func isTransientDownloadErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	var statusErr *httpStatusError
+	if errors.As(err, &statusErr) {
+		if statusErr.code >= 500 {
+			return true
+		}
+		return statusErr.code == http.StatusRequestTimeout || statusErr.code == http.StatusTooManyRequests
+	}
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	// 兜底：字符串匹配 OS 层典型瞬时错误（避免 errors 链穿透不过带来的误判）
+	msg := err.Error()
+	return strings.Contains(msg, "connection reset") ||
+		strings.Contains(msg, "broken pipe") ||
+		strings.Contains(msg, "connection refused") ||
+		strings.Contains(msg, "no such host") ||
+		strings.Contains(msg, "EOF")
 }
 
 func (f *UpdateFacade) emitProgress(received, total int64) {
