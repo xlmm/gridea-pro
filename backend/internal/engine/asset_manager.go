@@ -146,7 +146,6 @@ func (m *AssetManager) CopyThemeAssets(buildDir, themeName string) error {
 		cssPath := filepath.Join(buildDir, DirStyles, FileMainCSS)
 		if _, err := os.Stat(overridePath); err == nil {
 			if _, err := os.Stat(cssPath); err == nil {
-				m.logger.Info("检测到 style-override.js（纯 CSS 主题），应用自定义样式...")
 				customCSS, err := m.applyStyleOverride(overridePath)
 				if err != nil {
 					m.logger.Warn("应用 style-override.js 失败", "error", err)
@@ -158,8 +157,6 @@ func (m *AssetManager) CopyThemeAssets(buildDir, themeName string) error {
 						cssContent = append(cssContent, []byte("\n/* style-override */\n"+customCSS)...)
 						if err := m.manifest.WriteFile(cssPath, cssContent, 0644); err != nil {
 							m.logger.Warn("写入 CSS 文件失败", "error", err)
-						} else {
-							m.logger.Info("纯 CSS 主题自定义样式应用成功")
 						}
 					}
 				}
@@ -470,20 +467,16 @@ func (m *AssetManager) BundleCSS(buildDir, themePath string) error {
 	}
 
 	var headContent []byte
-	var headPath string
-	var err error
 	for _, p := range headPaths {
-		headContent, err = os.ReadFile(p)
-		if err == nil {
-			headPath = p
+		if data, err := os.ReadFile(p); err == nil {
+			headContent = data
 			break
 		}
 	}
 	if headContent == nil {
-		m.logger.Info("未找到 head 模板文件，跳过 CSS 合并")
+		// 未找到 head 模板时静默跳过 CSS 合并。
 		return nil
 	}
-	m.logger.Info("使用 head 模板", "path", headPath)
 
 	// 提取 /styles/xxx.css 引用
 	cssRefRe := regexp.MustCompile(`href="/styles/([\w.\-]+\.css)"`)

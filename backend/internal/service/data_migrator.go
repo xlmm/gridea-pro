@@ -107,12 +107,17 @@ func (m *DataMigrator) migrateUnderscoreIdToId() {
 }
 
 func (m *DataMigrator) RunMigration(ctx context.Context) error {
-	log.Println("[DataMigrator] --------- 开始全量检查与迁移历史基础关联数据 ID ---------")
+	// 运行策略：正常启动（无历史脏数据）下完全静默，避免刷屏；
+	// 只有真正修复了数据才在结尾打一条汇总。错误仍保留为 log.Printf，
+	// 便于用户发现保存失败等异常。
 
 	// ---------------- 第零步：将旧版 "_id" key 迁移为 "id" ----------------
+	// migrateUnderscoreIdToId 内部只在发生实际替换时 log
 	m.migrateUnderscoreIdToId()
 
 	// ---------------- 第一步：基础数据清洗与映射构建 ----------------
+
+	var categoryFixed, tagFixed, menuFixed, linkFixed, memoFixed, postFixed int
 
 	// 1.1 获取并洗刷分类 (Category)
 	categories, err := m.categoryRepo.List(ctx)
@@ -125,12 +130,10 @@ func (m *DataMigrator) RunMigration(ctx context.Context) error {
 	var categoryNeedsSave bool
 
 	for i, cat := range categories {
-		oldID := cat.ID
 		if !m.isValidID(cat.ID) { // ID为空或长度不对
-			newID := m.generateID()
-			categories[i].ID = newID
+			categories[i].ID = m.generateID()
 			categoryNeedsSave = true
-			log.Printf("[DataMigrator] 分类 [%s] ID 不合规或为空 (%s) -> 分配新 ID: %s", cat.Name, oldID, newID)
+			categoryFixed++
 		}
 		// 加入映射大表，无论原本是否合规，都需入表，方便供 Post 检索引用
 		categorySlugToIDMap[categories[i].Slug] = categories[i].ID
@@ -138,12 +141,9 @@ func (m *DataMigrator) RunMigration(ctx context.Context) error {
 	}
 
 	if categoryNeedsSave {
-		// 回写 categories.json
 		// 因为很多老数据原来是没有 ID 的，如果调 Update 会报 "item not found"。所以必须用 SaveAll 全量覆盖保存。
 		if err := m.categoryRepo.SaveAll(ctx, categories); err != nil {
-			log.Printf("[DataMigrator] 保存修复后的分类数据失败: %v\n", err)
-		} else {
-			log.Println("[DataMigrator] 成功保存修复后的分类数据。")
+			log.Printf("[DataMigrator] 保存修复后的分类数据失败: %v", err)
 		}
 	}
 
@@ -157,41 +157,33 @@ func (m *DataMigrator) RunMigration(ctx context.Context) error {
 	var tagNeedsSave bool
 
 	for i, tag := range tags {
-		oldID := tag.ID
 		if !m.isValidID(tag.ID) {
-			newID := m.generateID()
-			tags[i].ID = newID
+			tags[i].ID = m.generateID()
 			tagNeedsSave = true
-			log.Printf("[DataMigrator] 标签 [%s] ID 不合规或为空 (%s) -> 分配新 ID: %s", tag.Name, oldID, newID)
+			tagFixed++
 		}
 		tagNameToIDMap[tags[i].Name] = tags[i].ID
 	}
 
 	if tagNeedsSave {
 		if err := m.tagRepo.SaveAll(ctx, tags); err != nil {
-			log.Printf("[DataMigrator] 保存修复后的标签数据失败: %v\n", err)
-		} else {
-			log.Println("[DataMigrator] 成功保存修复后的标签数据。")
+			log.Printf("[DataMigrator] 保存修复后的标签数据失败: %v", err)
 		}
 	}
 
 	// 1.3 获取并洗刷菜单 (Menu)
-	menus, err := m.menuRepo.List(ctx)
-	if err == nil {
+	if menus, err := m.menuRepo.List(ctx); err == nil {
 		var menuNeedsSave bool
 		for i, menu := range menus {
 			if !m.isValidID(menu.ID) {
-				newID := m.generateID()
-				menus[i].ID = newID
+				menus[i].ID = m.generateID()
 				menuNeedsSave = true
-				log.Printf("[DataMigrator] 菜单 [%s] ID 不合规或为空 -> 分配新 ID: %s", menu.Name, newID)
+				menuFixed++
 			}
 		}
 		if menuNeedsSave {
 			if err := m.menuRepo.SaveAll(ctx, menus); err != nil {
-				log.Printf("[DataMigrator] 保存修复后的菜单数据失败: %v\n", err)
-			} else {
-				log.Println("[DataMigrator] 成功保存修复后的菜单数据。")
+				log.Printf("[DataMigrator] 保存修复后的菜单数据失败: %v", err)
 			}
 		}
 	} else {
@@ -199,22 +191,18 @@ func (m *DataMigrator) RunMigration(ctx context.Context) error {
 	}
 
 	// 1.4 获取并洗刷友链 (Link)
-	links, err := m.linkRepo.List(ctx)
-	if err == nil {
+	if links, err := m.linkRepo.List(ctx); err == nil {
 		var linkNeedsSave bool
 		for i, link := range links {
 			if !m.isValidID(link.ID) {
-				newID := m.generateID()
-				links[i].ID = newID
+				links[i].ID = m.generateID()
 				linkNeedsSave = true
-				log.Printf("[DataMigrator] 友链 [%s] ID 不合规或为空 -> 分配新 ID: %s", link.Name, newID)
+				linkFixed++
 			}
 		}
 		if linkNeedsSave {
 			if err := m.linkRepo.SaveAll(ctx, links); err != nil {
-				log.Printf("[DataMigrator] 保存修复后的友链数据失败: %v\n", err)
-			} else {
-				log.Println("[DataMigrator] 成功保存修复后的友链数据。")
+				log.Printf("[DataMigrator] 保存修复后的友链数据失败: %v", err)
 			}
 		}
 	} else {
@@ -222,22 +210,18 @@ func (m *DataMigrator) RunMigration(ctx context.Context) error {
 	}
 
 	// 1.5 获取并洗刷闪念 (Memo)
-	memos, err := m.memoRepo.List(ctx)
-	if err == nil {
+	if memos, err := m.memoRepo.List(ctx); err == nil {
 		var memoNeedsSave bool
 		for i, memo := range memos {
 			if !m.isValidID(memo.ID) {
-				newID := m.generateID()
-				memos[i].ID = newID
+				memos[i].ID = m.generateID()
 				memoNeedsSave = true
-				log.Printf("[DataMigrator] 闪念 [...] ID 不合规或为空 -> 分配新 ID: %s", newID)
+				memoFixed++
 			}
 		}
 		if memoNeedsSave {
 			if err := m.memoRepo.SaveAll(ctx, memos); err != nil {
-				log.Printf("[DataMigrator] 保存修复后的闪念快照数据失败: %v\n", err)
-			} else {
-				log.Println("[DataMigrator] 成功保存修复后的闪念数据。")
+				log.Printf("[DataMigrator] 保存修复后的闪念数据失败: %v", err)
 			}
 		}
 	} else {
@@ -251,43 +235,34 @@ func (m *DataMigrator) RunMigration(ctx context.Context) error {
 		return fmt.Errorf("加载文章聚合失败: %w", err)
 	}
 
-	var migratedPostCount int
-
 	for _, post := range posts {
 		var postModified bool
 
 		// 2.0 修复 Post 自带的 ID
-		oldPostID := post.ID
 		if !m.isValidID(post.ID) {
-			newID := m.generateID()
-			post.ID = newID
+			post.ID = m.generateID()
 			postModified = true
-			log.Printf("[DataMigrator] 文章 [%s] ID 不合规或为空 (%s) -> 分配新 ID: %s", post.Title, oldPostID, newID)
 		}
 
-		// 2.1 修复 CategoryIDs
-		// 如果文章的老 Categories 字段有值，但 CategoryIDs 映射数量对不上，或者发现残存的旧格式数据
+		// 2.1 修复 CategoryIDs（文章老的 Categories 字段有值但与 CategoryIDs 对不上）
 		if len(post.Categories) > 0 {
 			var newCategoryIDs []string
 			for _, catIdent := range post.Categories {
-				// 首先尝试当匹配 Slug
+				// 按 Slug → Name → 原本就是 ID 的顺序尝试映射
 				if mappedID, ok := categorySlugToIDMap[catIdent]; ok {
 					newCategoryIDs = append(newCategoryIDs, mappedID)
 					continue
 				}
-				// 尝试匹配 Name
 				if mappedID, ok := categoryNameToIDMap[catIdent]; ok {
 					newCategoryIDs = append(newCategoryIDs, mappedID)
 					continue
 				}
-				// 如果原本就是存的 ID 的情况
 				if m.isValidID(catIdent) {
 					newCategoryIDs = append(newCategoryIDs, catIdent)
 					continue
 				}
 			}
-
-			// 只有发生了变化才覆写 (为了防抖)，这可以通过简单的数量与元素对比得出
+			// 只在顺序无关的元素集不同才算"需要覆写"，避免抖动
 			if !slicesEqual(post.CategoryIDs, newCategoryIDs) {
 				post.CategoryIDs = newCategoryIDs
 				postModified = true
@@ -305,7 +280,6 @@ func (m *DataMigrator) RunMigration(ctx context.Context) error {
 					newTagIDs = append(newTagIDs, tagName)
 				}
 			}
-
 			if !slicesEqual(post.TagIDs, newTagIDs) {
 				post.TagIDs = newTagIDs
 				postModified = true
@@ -314,20 +288,19 @@ func (m *DataMigrator) RunMigration(ctx context.Context) error {
 
 		if postModified {
 			if err := m.postRepo.Update(ctx, &post); err != nil {
-				log.Printf("[DataMigrator] 回写修复文章失败 [%s]: %v\n", post.FileName, err)
+				log.Printf("[DataMigrator] 回写修复文章失败 [%s]: %v", post.FileName, err)
 			} else {
-				migratedPostCount++
+				postFixed++
 			}
 		}
 	}
 
-	if migratedPostCount > 0 {
-		log.Printf("[DataMigrator] 成功修复了 %d 篇文章的底层 ID 与映射关联关系。\n", migratedPostCount)
-	} else {
-		log.Println("[DataMigrator] ✅ 检查完成，未发现需要修正的历史数据，所有数据均处于最新健康状态。")
+	// 只在有真实修复时打一条汇总；正常启动下完全静默
+	total := categoryFixed + tagFixed + menuFixed + linkFixed + memoFixed + postFixed
+	if total > 0 {
+		log.Printf("[DataMigrator] 修复了 %d 项历史数据 (分类 %d / 标签 %d / 菜单 %d / 友链 %d / 闪念 %d / 文章 %d)",
+			total, categoryFixed, tagFixed, menuFixed, linkFixed, memoFixed, postFixed)
 	}
-
-	log.Println("[DataMigrator] --------- 数据清洗迁移协程运行完毕 ---------")
 	return nil
 }
 

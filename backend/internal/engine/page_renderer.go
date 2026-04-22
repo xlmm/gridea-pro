@@ -196,8 +196,6 @@ func (r *PageRenderer) renderPaginated(ctx context.Context, cfg paginatedRenderC
 
 // RenderIndex 渲染首页（支持分页）
 func (r *PageRenderer) RenderIndex(ctx context.Context, buildDir string, data *template.TemplateData) error {
-	r.logger.Info(fmt.Sprintf("开始渲染首页，使用 %s 引擎", r.renderer.GetEngineType()))
-
 	listPosts := getVisiblePosts(data.Posts)
 
 	err := r.renderPaginated(ctx, paginatedRenderConfig{

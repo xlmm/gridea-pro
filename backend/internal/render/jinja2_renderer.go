@@ -62,13 +62,11 @@ func NewJinja2Renderer(config RenderConfig) *Jinja2Renderer {
 
 	logger := slog.Default()
 
-	// 确保模板目录存在
+	// 确保模板目录存在；不存在时 Warn 并兜底创建
 	if _, err := os.Stat(templatesDir); os.IsNotExist(err) {
 		logger.Warn("templatesDir does not exist", "path", templatesDir)
 		_ = os.MkdirAll(templatesDir, 0755)
 	}
-
-	logger.Info("Using Jinja2 templatesDir", "path", templatesDir)
 
 	// 创建自定义清理加载器
 	// SanitizingLoader 在读取模板文件后自动清理 {{ }}/{% %}/{# #} 标签内的换行符
@@ -159,25 +157,25 @@ func (r *Jinja2Renderer) getTemplate(name string) (*pongo2.Template, error) {
 	}
 	r.cacheLock.RUnlock()
 
-	// 按优先级尝试不同扩展名
-	// .html 是最通用的，.jinja2 和 .j2 是 Jinja2 惯用扩展名
+	// 按优先级尝试不同扩展名。.html 是最通用的，.jinja2 / .j2 是 Jinja2 惯用扩展名。
+	// 保留首次失败错误：.html 的解析错（最常见的语法错根因）不会被后续
+	// .jinja2 / .j2 的 "file not found" 覆盖。
 	extensions := []string{".html", ".jinja2", ".j2"}
 	var tmpl *pongo2.Template
-	var lastErr error
-
+	var firstErr error
 	for _, ext := range extensions {
-		filename := name + ext
-		tmpl, lastErr = r.templateSet.FromFile(filename)
-		if lastErr == nil {
+		t, err := r.templateSet.FromFile(name + ext)
+		if err == nil {
+			tmpl = t
 			break
 		}
-
-		// 打印实际的详细解析错误！这能帮助我们发现具体是哪里语法错了
-		r.logger.Info("尝试加载模板时发生错误", "filename", filename, "error", lastErr)
+		if firstErr == nil {
+			firstErr = err
+		}
 	}
 
 	if tmpl == nil {
-		return nil, fmt.Errorf("模板文件未成功加载 %s: 最后错误: %w", name, lastErr)
+		return nil, fmt.Errorf("模板文件未成功加载 %s: %w", name, firstErr)
 	}
 
 	// 存入缓存
